@@ -4,13 +4,23 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dust2 FPS - CS2 Style</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="game-container"></div>
+    <div id="vignette"></div>
+    
     <div id="crosshair">
+      <div class="crosshair-line horizontal left"></div>
+      <div class="crosshair-line horizontal right"></div>
+      <div class="crosshair-line vertical top"></div>
+      <div class="crosshair-line vertical bottom"></div>
       <div class="dot"></div>
     </div>
+    
     <div id="hud">
       <div id="weapon-info">
         <span class="weapon-name">AK-47</span>
@@ -20,7 +30,6 @@
       </div>
     </div>
     
-    <!-- 操作提示面板 -->
     <div id="controls-panel">
       <h3>Controls</h3>
       <div class="control-row">
@@ -34,7 +43,7 @@
       </div>
       <div class="control-row">
         <div class="key">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="M12 2L12 22M12 2L6 8M12 2L18 8"/>
           </svg>
         </div>
@@ -67,9 +76,9 @@
     
     <div id="start-screen">
       <div class="start-content">
-        <h1>DUST2 FPS</h1>
-        <p class="subtitle">CS2 Style First Person Shooter</p>
-        <button id="start-btn">CLICK TO PLAY</button>
+        <h1>DUST2</h1>
+        <p class="subtitle">First Person Shooter</p>
+        <button id="start-btn">Click to Play</button>
       </div>
     </div>
     <script type="module" src="/src/main.ts"></script>

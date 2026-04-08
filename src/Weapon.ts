@@ -142,9 +142,18 @@ export abstract class Weapon {
   }
   
   protected updateAmmoDisplay(): void {
+    const ammoDisplay = document.getElementById('ammo-display');
     const ammoCount = document.querySelector('#ammo-display .current');
     if (ammoCount) {
       ammoCount.textContent = this.currentAmmo.toString();
+    }
+    if (ammoDisplay) {
+      ammoDisplay.classList.remove('low', 'empty');
+      if (this.currentAmmo === 0) {
+        ammoDisplay.classList.add('empty');
+      } else if (this.currentAmmo <= 10) {
+        ammoDisplay.classList.add('low');
+      }
     }
   }
   
