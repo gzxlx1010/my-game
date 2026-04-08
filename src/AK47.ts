@@ -25,6 +25,9 @@ export class AK47 {
   private readonly RELOAD_DURATION = 2.0; // 2 seconds to reload
   private magazineOffset = 0; // For reload animation
 
+  // Shared audio context
+  private audioCtx: AudioContext | null = null;
+
   constructor(scene: THREE.Scene, _camera: THREE.Camera) {
     this.weaponGroup = new THREE.Group();
     this.createAK47();
@@ -37,27 +40,35 @@ export class AK47 {
     this.createAmmoDisplay();
   }
 
+  private initAudio(): void {
+    if (!this.audioCtx) {
+      this.audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    // Resume if suspended
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+  }
+
   private createAmmoDisplay(): void {
     // Create ammo UI if not exists
     if (!document.getElementById('ammo-display')) {
       const ammoDisplay = document.createElement('div');
       ammoDisplay.id = 'ammo-display';
       ammoDisplay.innerHTML = `
-        <span id="ammo-count">${this.currentAmmo}</span> / <span id="ammo-max">${this.MAX_AMMO}</span>
+        <span class="current">${this.currentAmmo}</span>
+        <span class="separator">/</span>
+        <span class="max">${this.MAX_AMMO}</span>
       `;
-      document.getElementById('hud')?.appendChild(ammoDisplay);
+      document.getElementById('weapon-info')?.appendChild(ammoDisplay);
     }
     this.updateAmmoDisplay();
   }
 
   private updateAmmoDisplay(): void {
-    const ammoCount = document.getElementById('ammo-count');
-    const ammoMax = document.getElementById('ammo-max');
+    const ammoCount = document.querySelector('#ammo-display .current');
     if (ammoCount) {
       ammoCount.textContent = this.currentAmmo.toString();
-    }
-    if (ammoMax) {
-      ammoMax.textContent = this.MAX_AMMO.toString();
     }
   }
 
@@ -187,6 +198,7 @@ export class AK47 {
   private setupControls(): void {
     document.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
+        this.initAudio(); // Initialize audio on first interaction
         this.isMouseDown = true;
       }
     });
@@ -203,8 +215,11 @@ export class AK47 {
     
     // Reload with R key
     document.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyR' && !this.isReloading && this.currentAmmo < this.MAX_AMMO) {
-        this.startReload();
+      if (e.code === 'KeyR') {
+        this.initAudio(); // Initialize audio on first interaction
+        if (!this.isReloading && this.currentAmmo < this.MAX_AMMO) {
+          this.startReload();
+        }
       }
     });
   }
@@ -245,26 +260,24 @@ export class AK47 {
   }
 
   private playReloadSound(): void {
-    try {
-      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      const oscillator = audioCtx.createOscillator();
-      const gainNode = audioCtx.createGain();
-      
-      oscillator.type = 'sine';
-      oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
-      oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.2);
-      
-      gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-      
-      oscillator.connect(gainNode);
-      gainNode.connect(audioCtx.destination);
-      
-      oscillator.start(audioCtx.currentTime);
-      oscillator.stop(audioCtx.currentTime + 0.2);
-    } catch {
-      // Audio not supported
-    }
+    if (!this.audioCtx) return;
+    
+    const ctx = this.audioCtx;
+    const oscillator = ctx.createOscillator();
+    const gainNode = ctx.createGain();
+    
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(400, ctx.currentTime);
+    oscillator.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.2);
+    
+    gainNode.gain.setValueAtTime(0.2, ctx.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    
+    oscillator.start(ctx.currentTime);
+    oscillator.stop(ctx.currentTime + 0.2);
   }
 
   private shoot(): void {
@@ -299,40 +312,47 @@ export class AK47 {
   }
   
   private playShotSound(): void {
-    try {
-      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-      
-      // Create noise for gunshot
-      const bufferSize = audioCtx.sampleRate * 0.1;
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      
-      for (let i = 0; i < bufferSize; i++) {
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
-      }
-      
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = buffer;
-      
-      // Low pass filter for muffled sound
-      const filter = audioCtx.createBiquadFilter();
-      filter.type = 'lowpass';
-      filter.frequency.value = 1500;
-      
-      // Gain for volume
-      const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-      
-      noise.connect(filter);
-      filter.connect(gain);
-      gain.connect(audioCtx.destination);
-      
-      noise.start(audioCtx.currentTime);
-      noise.stop(audioCtx.currentTime + 0.1);
-    } catch {
-      // Audio not supported
+    if (!this.audioCtx) return;
+    
+    const ctx = this.audioCtx;
+    
+    // Create noise for gunshot
+    const bufferSize = Math.floor(ctx.sampleRate * 0.15);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      // Add some variation to the noise
+      const envelope = Math.pow(1 - i / bufferSize, 1.5);
+      data[i] = (Math.random() * 2 - 1) * envelope;
     }
+    
+    const noise = ctx.createBufferSource();
+    noise.buffer = buffer;
+    
+    // Low pass filter for muffled sound
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 2000;
+    filter.Q.value = 1;
+    
+    // High pass to remove rumble
+    const highpass = ctx.createBiquadFilter();
+    highpass.type = 'highpass';
+    highpass.frequency.value = 100;
+    
+    // Gain for volume
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.6, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+    
+    noise.connect(filter);
+    filter.connect(highpass);
+    highpass.connect(gain);
+    gain.connect(ctx.destination);
+    
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.15);
   }
 
   public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number, camera: THREE.Camera): void {
