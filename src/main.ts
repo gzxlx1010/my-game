@@ -35,7 +35,15 @@ class Game {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
-    this.renderer.setClearColor(0x1a1a2e);
+    this.renderer.setClearColor(0x87ceeb);
+    this.renderer.autoClear = true;
+    this.renderer.autoClearColor = true;
+    this.renderer.autoClearDepth = true;
+    this.renderer.autoClearStencil = false;
+    
+    // Set scene background to match sky
+    this.scene.background = new THREE.Color(0x87ceeb);
+    this.scene.fog = new THREE.Fog(0xc9b896, 200, 1500);
     
     const container = document.getElementById('game-container');
     if (container) {

@@ -37,8 +37,7 @@ export class Dust2Map {
   }
 
   private createEnvironment(): void {
-    // Fog for atmosphere
-    this.scene.fog = new THREE.Fog(0xc9b896, 200, 1500);
+    // Fog is now set in main.ts
   }
 
   private createGround(): void {
@@ -368,7 +367,9 @@ export class Dust2Map {
           gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
         }
       `,
-      side: THREE.BackSide
+      side: THREE.BackSide,
+      depthWrite: false,
+      fog: false
     });
     const sky = new THREE.Mesh(skyGeo, skyMat);
     this.scene.add(sky);
