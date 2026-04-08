@@ -250,7 +250,7 @@ export abstract class Weapon {
     }
     
     // Auto fire
-    if (this.isMouseDown && !this.isReloading) {
+    if (this.getMouseDown() && !this.isReloading) {
       const currentTime = performance.now() / 1000;
       if (currentTime - this.lastShotTime >= this.config.fireRate) {
         this.lastShotTime = currentTime;
