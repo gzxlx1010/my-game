@@ -183,7 +183,9 @@ export abstract class Weapon {
       }
     }
     
-    this.recoilAmount *= 0.85;
+    // Recoil decay - faster recovery (within 1 second)
+    // Using exponential decay with rate that ensures near-zero after ~0.7s
+    this.recoilAmount *= Math.pow(0.05, delta * 3);
     this.updateWeaponPosition(isMoving);
     
     if (this.magazine && this.isReloading) {

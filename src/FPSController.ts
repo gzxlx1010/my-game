@@ -52,6 +52,12 @@ export class FPSController {
   private targetEulerX = 0;
   private targetEulerY = 0;
   
+  // Recoil system
+  private recoilOffset = 0;
+  private recoilRecovery = 0;
+  private readonly RECOIL_KICK = 0.08;  // Initial kick strength
+  private readonly RECOIL_RECOVERY_SPEED = 8;  // Recovery speed (higher = faster)
+  
   // Footstep sound
   private lastFootstep = 0;
 
@@ -241,7 +247,12 @@ export class FPSController {
     this.camera.position.copy(this.position);
     
     // Smooth camera rotation
-    this.euler.x += (this.targetEulerX - this.euler.x) * 0.15;
+    // Apply recoil: kick camera down (negative X), then recover
+    this.recoilRecovery += delta * this.RECOIL_RECOVERY_SPEED;
+    this.recoilOffset *= Math.pow(0.1, delta * this.RECOIL_RECOVERY_SPEED); // Fast exponential decay
+    
+    const effectiveRecoil = Math.max(0, this.recoilOffset);
+    this.euler.x += (this.targetEulerX + effectiveRecoil - this.euler.x) * 0.15;
     this.euler.y += (this.targetEulerY - this.euler.y) * 0.15;
     this.camera.quaternion.setFromEuler(this.euler);
     
@@ -360,5 +371,16 @@ export class FPSController {
   
   public isSprinting(): boolean {
     return this.sprint && this.isWalking;
+  }
+  
+  // Trigger recoil - call this when weapon fires
+  public triggerRecoil(): void {
+    this.recoilOffset = this.RECOIL_KICK;
+    this.recoilRecovery = 0;
+  }
+  
+  // Get current recoil offset for external effects
+  public getRecoilOffset(): number {
+    return this.recoilOffset;
   }
 }

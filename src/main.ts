@@ -87,6 +87,9 @@ class Game {
     // 检查AK47是否正在射击（鼠标按下且有子弹）
     if (!this.ak47.canShoot()) return;
     
+    // 触发后座力
+    this.fpsController.triggerRecoil();
+    
     // 获取敌人网格进行射线检测
     const enemyMeshes = this.enemy.getAllEnemyMeshes();
     
