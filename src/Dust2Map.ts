@@ -38,12 +38,12 @@ export class Dust2Map {
 
   private createEnvironment(): void {
     // Fog for atmosphere
-    this.scene.fog = new THREE.Fog(0xc9b896, 100, 800);
+    this.scene.fog = new THREE.Fog(0xc9b896, 200, 1500);
   }
 
   private createGround(): void {
     // Main ground
-    const groundGeometry = new THREE.PlaneGeometry(800, 800);
+    const groundGeometry = new THREE.PlaneGeometry(1600, 1600);
     const ground = new THREE.Mesh(groundGeometry, this.sandMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
@@ -51,7 +51,7 @@ export class Dust2Map {
     this.scene.add(ground);
 
     // Road/path in the middle
-    const roadGeometry = new THREE.PlaneGeometry(40, 400);
+    const roadGeometry = new THREE.PlaneGeometry(80, 800);
     const road = new THREE.Mesh(roadGeometry, this.wallMaterial);
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, 0.1, 0);
@@ -61,76 +61,76 @@ export class Dust2Map {
 
   private createMainArea(): void {
     // Long wall A site (left side)
-    this.createWall(-100, 0, -80, 200, 60, 10);
+    this.createWall(-150, 0, -160, 400, 120, 20);
     
     // Short wall A site
-    this.createWall(-180, 0, -30, 10, 40, 80);
+    this.createWall(-360, 0, -60, 20, 80, 160);
     
     // Site A platform
-    this.createPlatform(-140, 0, -100, 120, 100);
+    this.createPlatform(-280, 0, -200, 240, 200);
     
     // CT spawn area walls
-    this.createWall(100, 0, -150, 150, 50, 10);
-    this.createWall(180, 0, -100, 10, 40, 100);
+    this.createWall(200, 0, -300, 300, 100, 20);
+    this.createWall(360, 0, -200, 20, 80, 200);
     
     // B site walls
-    this.createWall(-80, 0, 80, 10, 40, 120);
-    this.createWall(80, 0, 80, 10, 40, 120);
-    this.createWall(0, 0, 150, 180, 50, 10);
+    this.createWall(-160, 0, 160, 20, 80, 240);
+    this.createWall(160, 0, 160, 20, 80, 240);
+    this.createWall(0, 0, 300, 360, 100, 20);
     
     // B site platform
-    this.createPlatform(0, 0, 110, 180, 80);
+    this.createPlatform(0, 0, 220, 360, 160);
 
     // Mid walls
-    this.createWall(-50, 0, 0, 10, 30, 60);
-    this.createWall(50, 0, 0, 10, 30, 60);
+    this.createWall(-100, 0, 0, 20, 60, 120);
+    this.createWall(100, 0, 0, 20, 60, 120);
   }
 
   private createTunnels(): void {
     // A tunnel (left)
-    this.createTunnel(-250, 0, -50, 80, 40, 200);
+    this.createTunnel(-500, 0, -100, 160, 80, 400);
     
     // B tunnel (right) 
-    this.createTunnel(250, 0, 50, 80, 40, 200);
+    this.createTunnel(500, 0, 100, 160, 80, 400);
 
     // Tunnel support pillars
-    for (let i = 0; i < 5; i++) {
-      this.createPillar(-220, 0, -100 + i * 50, 8, 40, 8);
-      this.createPillar(220, 0, 100 - i * 50, 8, 40, 8);
+    for (let i = 0; i < 8; i++) {
+      this.createPillar(-440, 0, -200 + i * 60, 16, 80, 16);
+      this.createPillar(440, 0, 200 - i * 60, 16, 80, 16);
     }
   }
 
   private createTunnel(x: number, y: number, z: number, width: number, height: number, depth: number): void {
     // Tunnel floor
-    const floorGeo = new THREE.BoxGeometry(width, 5, depth);
+    const floorGeo = new THREE.BoxGeometry(width, 10, depth);
     const floor = new THREE.Mesh(floorGeo, this.wallMaterial);
-    floor.position.set(x, y + 2.5, z);
+    floor.position.set(x, y + 5, z);
     floor.castShadow = true;
     floor.receiveShadow = true;
     this.scene.add(floor);
     this.colliders.push(floor);
 
     // Tunnel ceiling
-    const ceilingGeo = new THREE.BoxGeometry(width, 5, depth);
+    const ceilingGeo = new THREE.BoxGeometry(width, 10, depth);
     const ceiling = new THREE.Mesh(ceilingGeo, this.wallMaterial);
-    ceiling.position.set(x, y + height - 2.5, z);
+    ceiling.position.set(x, y + height - 5, z);
     ceiling.castShadow = true;
     ceiling.receiveShadow = true;
     this.scene.add(ceiling);
     this.colliders.push(ceiling);
 
     // Tunnel walls
-    const wallGeo1 = new THREE.BoxGeometry(5, height, depth);
+    const wallGeo1 = new THREE.BoxGeometry(10, height, depth);
     const wall1 = new THREE.Mesh(wallGeo1, this.wallMaterial);
-    wall1.position.set(x - width/2 + 2.5, y + height/2, z);
+    wall1.position.set(x - width/2 + 5, y + height/2, z);
     wall1.castShadow = true;
     wall1.receiveShadow = true;
     this.scene.add(wall1);
     this.colliders.push(wall1);
 
-    const wallGeo2 = new THREE.BoxGeometry(5, height, depth);
+    const wallGeo2 = new THREE.BoxGeometry(10, height, depth);
     const wall2 = new THREE.Mesh(wallGeo2, this.wallMaterial);
-    wall2.position.set(x + width/2 - 2.5, y + height/2, z);
+    wall2.position.set(x + width/2 - 5, y + height/2, z);
     wall2.castShadow = true;
     wall2.receiveShadow = true;
     this.scene.add(wall2);
@@ -139,16 +139,16 @@ export class Dust2Map {
 
   private createBombsites(): void {
     // A Site bombsite
-    this.createSiteMarker(-140, 0.2, -120, "A");
+    this.createSiteMarker(-280, 0.2, -240, "A");
     
     // B Site bombsite  
-    this.createSiteMarker(0, 0.2, 110, "B");
+    this.createSiteMarker(0, 0.2, 220, "B");
 
     // Bombsite bombs (visual only)
-    this.createBomb(-140, 3, -115);
-    this.createBomb(-145, 3, -125);
-    this.createBomb(5, 3, 115);
-    this.createBomb(-5, 3, 105);
+    this.createBomb(-280, 6, -230);
+    this.createBomb(-290, 6, -250);
+    this.createBomb(10, 6, 230);
+    this.createBomb(-10, 6, 210);
   }
 
   private createSiteMarker(x: number, y: number, z: number, label: string): void {
@@ -163,7 +163,7 @@ export class Dust2Map {
     ctx.fillText(label, 64, 64);
     
     const texture = new THREE.CanvasTexture(canvas);
-    const markerGeo = new THREE.PlaneGeometry(20, 20);
+    const markerGeo = new THREE.PlaneGeometry(40, 40);
     const markerMat = new THREE.MeshBasicMaterial({ 
       map: texture, 
       transparent: true,
@@ -176,7 +176,7 @@ export class Dust2Map {
   }
 
   private createBomb(x: number, y: number, z: number): void {
-    const bombGeo = new THREE.BoxGeometry(6, 4, 6);
+    const bombGeo = new THREE.BoxGeometry(12, 8, 12);
     const bombMat = new THREE.MeshStandardMaterial({
       color: 0x222222,
       roughness: 0.3,
@@ -190,18 +190,18 @@ export class Dust2Map {
 
   private createPlatforms(): void {
     // A site raised platform
-    const aPlatGeo = new THREE.BoxGeometry(120, 20, 100);
+    const aPlatGeo = new THREE.BoxGeometry(240, 40, 200);
     const aPlat = new THREE.Mesh(aPlatGeo, this.wallMaterial);
-    aPlat.position.set(-140, 10, -100);
+    aPlat.position.set(-280, 20, -200);
     aPlat.castShadow = true;
     aPlat.receiveShadow = true;
     this.scene.add(aPlat);
     this.colliders.push(aPlat);
 
     // B site raised platform
-    const bPlatGeo = new THREE.BoxGeometry(180, 15, 80);
+    const bPlatGeo = new THREE.BoxGeometry(360, 30, 160);
     const bPlat = new THREE.Mesh(bPlatGeo, this.wallMaterial);
-    bPlat.position.set(0, 7.5, 110);
+    bPlat.position.set(0, 15, 220);
     bPlat.castShadow = true;
     bPlat.receiveShadow = true;
     this.scene.add(bPlat);
@@ -210,11 +210,11 @@ export class Dust2Map {
 
   private createRamps(): void {
     // A site ramp
-    this.createRamp(-80, 0, -60, 40, 20, 30, 0);
+    this.createRamp(-160, 0, -120, 80, 40, 60, 0);
     
     // B site ramps
-    this.createRamp(-70, 0, 60, 30, 15, 40, 0);
-    this.createRamp(70, 0, 60, 30, 15, 40, 0);
+    this.createRamp(-140, 0, 120, 60, 30, 80, 0);
+    this.createRamp(140, 0, 120, 60, 30, 80, 0);
   }
 
   private createRamp(x: number, y: number, z: number, width: number, height: number, depth: number, rotation: number): void {
@@ -243,14 +243,14 @@ export class Dust2Map {
   private createBoxes(): void {
     // Random boxes for cover
     const boxPositions = [
-      { x: -100, z: -150 },
-      { x: -180, z: -80 },
-      { x: -200, z: 0 },
-      { x: 150, z: 100 },
-      { x: 200, z: -50 },
-      { x: 0, z: -50 },
-      { x: -50, z: 50 },
-      { x: 50, z: 50 },
+      { x: -200, z: -300 },
+      { x: -360, z: -160 },
+      { x: -400, z: 0 },
+      { x: 300, z: 200 },
+      { x: 400, z: -100 },
+      { x: 0, z: -100 },
+      { x: -100, z: 100 },
+      { x: 100, z: 100 },
     ];
 
     boxPositions.forEach(pos => {
@@ -259,11 +259,11 @@ export class Dust2Map {
   }
 
   private createRandomBox(x: number, y: number, z: number): void {
-    const size = 15 + Math.random() * 15;
-    const height = 10 + Math.random() * 30;
+    const size = 30 + Math.random() * 30;
+    const height = 20 + Math.random() * 60;
     const boxGeo = new THREE.BoxGeometry(size, height, size);
     const box = new THREE.Mesh(boxGeo, this.wallMaterial);
-    box.position.set(x + (Math.random() - 0.5) * 20, y + height/2, z + (Math.random() - 0.5) * 20);
+    box.position.set(x + (Math.random() - 0.5) * 40, y + height/2, z + (Math.random() - 0.5) * 40);
     box.rotation.y = Math.random() * Math.PI;
     box.castShadow = true;
     box.receiveShadow = true;
@@ -292,9 +292,9 @@ export class Dust2Map {
   }
 
   private createPlatform(x: number, y: number, z: number, width: number, depth: number): void {
-    const platGeo = new THREE.BoxGeometry(width, 20, depth);
+    const platGeo = new THREE.BoxGeometry(width, 40, depth);
     const plat = new THREE.Mesh(platGeo, this.wallMaterial);
-    plat.position.set(x, y + 10, z);
+    plat.position.set(x, y + 20, z);
     plat.castShadow = true;
     plat.receiveShadow = true;
     this.scene.add(plat);
@@ -303,41 +303,45 @@ export class Dust2Map {
 
   private addLighting(): void {
     // Ambient light
-    const ambient = new THREE.AmbientLight(0xffffff, 0.4);
+    const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambient);
 
     // Main sun light
-    const sunLight = new THREE.DirectionalLight(0xffeedd, 1.0);
-    sunLight.position.set(100, 200, 100);
+    const sunLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+    sunLight.position.set(200, 400, 200);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.width = 2048;
-    sunLight.shadow.mapSize.height = 2048;
+    sunLight.shadow.mapSize.width = 4096;
+    sunLight.shadow.mapSize.height = 4096;
     sunLight.shadow.camera.near = 0.5;
-    sunLight.shadow.camera.far = 1000;
-    sunLight.shadow.camera.left = -300;
-    sunLight.shadow.camera.right = 300;
-    sunLight.shadow.camera.top = 300;
-    sunLight.shadow.camera.bottom = -300;
+    sunLight.shadow.camera.far = 2000;
+    sunLight.shadow.camera.left = -600;
+    sunLight.shadow.camera.right = 600;
+    sunLight.shadow.camera.top = 600;
+    sunLight.shadow.camera.bottom = -600;
     this.scene.add(sunLight);
 
     // Fill light
-    const fillLight = new THREE.DirectionalLight(0xaaaacc, 0.3);
-    fillLight.position.set(-100, 100, -100);
+    const fillLight = new THREE.DirectionalLight(0xaaaacc, 0.4);
+    fillLight.position.set(-200, 200, -200);
     this.scene.add(fillLight);
 
     // Point lights for tunnels
-    const tunnelLight1 = new THREE.PointLight(0xffaa55, 0.5, 100);
-    tunnelLight1.position.set(-250, 35, -100);
+    const tunnelLight1 = new THREE.PointLight(0xffaa55, 0.8, 200);
+    tunnelLight1.position.set(-500, 70, -200);
     this.scene.add(tunnelLight1);
 
-    const tunnelLight2 = new THREE.PointLight(0xffaa55, 0.5, 100);
-    tunnelLight2.position.set(250, 35, 100);
+    const tunnelLight2 = new THREE.PointLight(0xffaa55, 0.8, 200);
+    tunnelLight2.position.set(500, 70, 200);
     this.scene.add(tunnelLight2);
+    
+    // Hemisphere light for sky color
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0xd4a574, 0.3);
+    this.scene.add(hemiLight);
   }
 
   private addSkybox(): void {
     // Create gradient skybox
-    const skyGeo = new THREE.SphereGeometry(500, 32, 32);
+    const skyGeo = new THREE.SphereGeometry(1000, 32, 32);
     const skyMat = new THREE.ShaderMaterial({
       uniforms: {
         topColor: { value: new THREE.Color(0x87ceeb) },

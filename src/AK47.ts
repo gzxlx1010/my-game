@@ -10,6 +10,11 @@ export class AK47 {
   private time = 0;
   private walkTime = 0;
   private breathTime = 0;
+  
+  // Auto fire
+  private isMouseDown = false;
+  private lastShotTime = 0;
+  private readonly FIRE_RATE = 0.1; // 100ms between shots (600 RPM)
 
   constructor(scene: THREE.Scene, _camera: THREE.Camera) {
     this.weaponGroup = new THREE.Group();
@@ -141,8 +146,19 @@ export class AK47 {
   private setupShooting(): void {
     document.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
-        this.shoot();
+        this.isMouseDown = true;
       }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 0) {
+        this.isMouseDown = false;
+      }
+    });
+    
+    // Also handle when mouse leaves window
+    document.addEventListener('mouseleave', () => {
+      this.isMouseDown = false;
     });
   }
 
@@ -155,12 +171,61 @@ export class AK47 {
 
     // Apply recoil
     this.recoilAmount = 1.0;
+    
+    // Play shot sound
+    this.playShotSound();
+  }
+  
+  private playShotSound(): void {
+    try {
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      
+      // Create noise for gunshot
+      const bufferSize = audioCtx.sampleRate * 0.1;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+      }
+      
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+      
+      // Low pass filter for muffled sound
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 1500;
+      
+      // Gain for volume
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+      
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      
+      noise.start(audioCtx.currentTime);
+      noise.stop(audioCtx.currentTime + 0.1);
+    } catch {
+      // Audio not supported
+    }
   }
 
   public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number, camera: THREE.Camera): void {
     this.time += delta;
     this.walkTime = walkTime;
     this.breathTime = breathTime;
+    
+    // Auto fire when mouse is held down
+    if (this.isMouseDown) {
+      const currentTime = performance.now() / 1000;
+      if (currentTime - this.lastShotTime >= this.FIRE_RATE) {
+        this.lastShotTime = currentTime;
+        this.shoot();
+      }
+    }
 
     // Recoil recovery
     this.recoilAmount *= 0.85;

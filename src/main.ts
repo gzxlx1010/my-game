@@ -42,7 +42,7 @@ class Game {
     this.dust2Map = new Dust2Map(this.scene);
     
     // Camera starts at T spawn (bottom of map)
-    const startPosition = new THREE.Vector3(0, 60, 200);
+    const startPosition = new THREE.Vector3(0, 40, 400);
     this.fpsController = new FPSController(this.camera, startPosition);
     
     // Create AK47 weapon (needs scene and camera)
