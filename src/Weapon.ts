@@ -6,8 +6,9 @@ export interface WeaponConfig {
   damage: number;          // 伤害值
   maxAmmo: number;        // 最大弹药
   reloadTime: number;      // 换弹时间（秒）
-  pellets?: number;       // 霰弹枪散弹数量（可选）
+  pellets?: number;        // 霰弹枪散弹数量（可选）
   soundUrl?: string;       // 音效URL（预留）
+  isMelee?: boolean;       // 是否近战武器
 }
 
 export abstract class Weapon {
