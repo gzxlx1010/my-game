@@ -16,14 +16,43 @@ export class FPSController {
   
   private isLocked = false;
   
-  private readonly MOVE_SPEED = 400;
-  private readonly JUMP_FORCE = 15;
-  private readonly GRAVITY = 40;
-  private readonly PLAYER_HEIGHT = 30;
+  private readonly MOVE_SPEED = 280;
+  private readonly JUMP_FORCE = 12;
+  private readonly GRAVITY = 30;
+  private readonly PLAYER_HEIGHT = 60;
   private readonly PLAYER_RADIUS = 15;
   
   private velocityY = 0;
   private isOnGround = true;
+  
+  // Walking simulation
+  private walkTime = 0;
+  private isWalking = false;
+  private readonly STEP_INTERVAL = 0.5; // Steps per second
+  
+  // Breathing simulation
+  private breathTime = 0;
+  private breathSpeed = 0.8;
+  private baseFOV = 75;
+  private targetFOV = 75;
+  private readonly BREATH_INTENSITY = 1.5;
+  
+  // Head bob
+  private headBobTime = 0;
+  private readonly HEAD_BOB_AMOUNT_Y = 0.08;
+  private readonly HEAD_BOB_AMOUNT_X = 0.04;
+  private readonly HEAD_BOB_SPEED = 12;
+  
+  // Landing effect
+  private landingBob = 0;
+  
+  // Camera smoothing
+  private smoothLookX = 0;
+  private smoothLookY = 0;
+  private readonly LOOK_SMOOTH = 0.15;
+  
+  // Footstep sound
+  private lastFootstep = 0;
 
   constructor(camera: THREE.PerspectiveCamera, startPosition: THREE.Vector3) {
     this.camera = camera;
@@ -33,6 +62,7 @@ export class FPSController {
     this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
+    this.baseFOV = camera.fov;
     
     this.setupControls();
   }
@@ -76,6 +106,7 @@ export class FPSController {
         if (this.canJump && this.isOnGround) {
           this.velocityY = this.JUMP_FORCE;
           this.isOnGround = false;
+          this.landingBob = 0;
         }
         break;
     }
@@ -106,19 +137,22 @@ export class FPSController {
     if (!this.isLocked) return;
     
     const sensitivity = 0.002;
-    this.euler.setFromQuaternion(this.camera.quaternion);
-    this.euler.y -= event.movementX * sensitivity;
-    this.euler.x -= event.movementY * sensitivity;
-    this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
-    this.camera.quaternion.setFromEuler(this.euler);
+    // Apply smoothing to mouse look
+    this.smoothLookX -= event.movementX * sensitivity;
+    this.smoothLookY -= event.movementY * sensitivity;
+    this.smoothLookY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.smoothLookY));
   }
 
   public update(delta: number, colliders: THREE.Mesh[]): void {
     if (!this.isLocked) return;
     
+    // Update walking state
+    this.isWalking = (this.moveForward || this.moveBackward || this.moveLeft || this.moveRight) && this.isOnGround;
+    
     // Apply friction
-    this.velocity.x -= this.velocity.x * 10.0 * delta;
-    this.velocity.z -= this.velocity.z * 10.0 * delta;
+    const friction = this.isWalking ? 8.0 : 10.0;
+    this.velocity.x -= this.velocity.x * friction * delta;
+    this.velocity.z -= this.velocity.z * friction * delta;
     
     // Apply gravity
     this.velocityY -= this.GRAVITY * delta;
@@ -128,12 +162,13 @@ export class FPSController {
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
     this.direction.normalize();
     
-    // Movement
+    // Movement with acceleration
+    const accel = this.isWalking ? this.MOVE_SPEED : this.MOVE_SPEED * 0.5;
     if (this.moveForward || this.moveBackward) {
-      this.velocity.z -= this.direction.z * this.MOVE_SPEED * delta;
+      this.velocity.z -= this.direction.z * accel * delta;
     }
     if (this.moveLeft || this.moveRight) {
-      this.velocity.x -= this.direction.x * this.MOVE_SPEED * delta;
+      this.velocity.x -= this.direction.x * accel * delta;
     }
     
     // Apply velocity to position
@@ -182,6 +217,11 @@ export class FPSController {
     // Ground check
     const groundY = this.getGroundHeight(this.position.x, this.position.z, colliders);
     if (this.position.y < groundY + this.PLAYER_HEIGHT) {
+      // Landing effect
+      if (!this.isOnGround && this.velocityY < -5) {
+        this.landingBob = Math.min(Math.abs(this.velocityY) * 0.1, 0.3);
+      }
+      
       this.position.y = groundY + this.PLAYER_HEIGHT;
       this.velocityY = 0;
       this.isOnGround = true;
@@ -190,6 +230,103 @@ export class FPSController {
     
     // Update camera position
     this.camera.position.copy(this.position);
+    
+    // Update camera rotation with smoothing
+    this.euler.setFromQuaternion(this.camera.quaternion);
+    this.euler.y += (this.smoothLookX - this.euler.y) * this.LOOK_SMOOTH;
+    this.euler.x += (this.smoothLookY - this.euler.x) * this.LOOK_SMOOTH;
+    this.camera.quaternion.setFromEuler(this.euler);
+    this.smoothLookX = 0;
+    this.smoothLookY = 0;
+    
+    // Update head bob and breathing
+    this.updateHeadBob(delta);
+    this.updateBreathing(delta);
+    this.updateFootsteps(delta);
+  }
+
+  private updateHeadBob(delta: number): void {
+    // Landing bob recovery
+    this.landingBob *= 0.9;
+    
+    // Walking head bob
+    if (this.isWalking) {
+      this.headBobTime += delta * this.HEAD_BOB_SPEED;
+      this.walkTime += delta;
+    } else {
+      // Smoothly return to center
+      this.headBobTime *= 0.95;
+    }
+    
+    // Calculate bob offsets
+    const bobX = Math.sin(this.headBobTime) * this.HEAD_BOB_AMOUNT_X;
+    const bobY = Math.abs(Math.cos(this.headBobTime)) * this.HEAD_BOB_AMOUNT_Y;
+    
+    // Apply to camera
+    this.camera.position.x += bobX;
+    this.camera.position.y += bobY + this.landingBob;
+  }
+
+  private updateBreathing(delta: number): void {
+    this.breathTime += delta * this.breathSpeed;
+    
+    // Breathing intensity based on movement
+    const intensity = this.isWalking ? this.BREATH_INTENSITY * 1.5 : this.BREATH_INTENSITY;
+    
+    // Breathing FOV effect
+    this.targetFOV = this.baseFOV + Math.sin(this.breathTime * 2) * intensity * 0.3;
+    
+    // Smooth FOV transition
+    this.camera.fov += (this.targetFOV - this.camera.fov) * 0.05;
+    this.camera.updateProjectionMatrix();
+    
+    // Subtle camera rotation from breathing
+    const breathRotX = Math.sin(this.breathTime) * 0.003 * intensity;
+    const breathRotY = Math.cos(this.breathTime * 0.7) * 0.002 * intensity;
+    
+    this.euler.x += breathRotX;
+    this.euler.y += breathRotY;
+  }
+
+  private updateFootsteps(delta: number): void {
+    if (!this.isWalking) {
+      this.lastFootstep = 0;
+      return;
+    }
+    
+    this.lastFootstep += delta;
+    
+    // Footstep interval (slightly faster when running)
+    const interval = this.STEP_INTERVAL * 0.8;
+    
+    if (this.lastFootstep >= interval) {
+      this.lastFootstep = 0;
+      this.playFootstep();
+    }
+  }
+
+  private playFootstep(): void {
+    // Create footstep sound using Web Audio API
+    try {
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(80 + Math.random() * 40, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.15);
+    } catch {
+      // Audio not supported or blocked
+    }
   }
 
   private getGroundHeight(x: number, z: number, colliders: THREE.Mesh[]): number {
@@ -209,5 +346,9 @@ export class FPSController {
 
   public getPosition(): THREE.Vector3 {
     return this.position.clone();
+  }
+  
+  public isMoving(): boolean {
+    return this.isWalking;
   }
 }

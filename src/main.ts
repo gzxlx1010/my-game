@@ -12,12 +12,15 @@ class Game {
   private ak47!: AK47;
   private clock: THREE.Clock;
   private isRunning = false;
+  private movementIndicator!: HTMLElement | null;
 
   constructor() {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.clock = new THREE.Clock();
+    
+    this.movementIndicator = null;
     
     this.init();
   }
@@ -43,6 +46,9 @@ class Game {
     this.fpsController = new FPSController(this.camera, startPosition);
     
     this.ak47 = new AK47(this.camera);
+    
+    // Get movement indicator
+    this.movementIndicator = document.getElementById('movement-indicator');
 
     // Handle resize
     window.addEventListener('resize', () => this.onResize());
@@ -69,10 +75,20 @@ class Game {
     // Update FPS controller
     this.fpsController.update(delta, this.dust2Map.colliders);
     
-    // Update weapon
-    const pos = this.fpsController.getPosition();
-    const movement = new THREE.Vector3().subVectors(pos, this.fpsController.getPosition()).length();
-    this.ak47.update(delta, movement > 0.1);
+    // Update weapon with animation times
+    const walkTime = this.fpsController['walkTime'] || 0;
+    const breathTime = this.fpsController['breathTime'] || 0;
+    const isMoving = this.fpsController.isMoving();
+    this.ak47.update(delta, isMoving, walkTime, breathTime);
+    
+    // Update movement indicator
+    if (this.movementIndicator) {
+      if (isMoving) {
+        this.movementIndicator.classList.add('visible');
+      } else {
+        this.movementIndicator.classList.remove('visible');
+      }
+    }
     
     // Render
     this.renderer.render(this.scene, this.camera);

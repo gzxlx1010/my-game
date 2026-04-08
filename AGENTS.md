@@ -6,6 +6,10 @@ A browser-based first person shooter inspired by CS2's classic Dust2 map. Built 
 - First-person perspective with full WASD + mouse controls
 - 3D AK47 weapon model with recoil animation
 - Collision detection with walls and objects
+- Realistic walking simulation with head bob
+- Breathing camera effects
+- Footstep sounds
+- UI controls panel with animations
 
 ## Tech Stack
 - **Renderer**: Three.js 0.183
@@ -21,7 +25,7 @@ A browser-based first person shooter inspired by CS2's classic Dust2 map. Built 
 │   ├── FPSController.ts   # First-person movement & look controls
 │   ├── Dust2Map.ts        # Map generation & collision objects
 │   ├── AK47.ts            # Weapon model & animations
-│   └── style.css          # UI styling (crosshair, HUD, start screen)
+│   └── style.css          # UI styling (crosshair, HUD, controls panel)
 ├── .coze                   # Project configuration
 └── package.json
 ```
@@ -34,12 +38,44 @@ A browser-based first person shooter inspired by CS2's classic Dust2 map. Built 
 - **ESC**: Release cursor lock
 
 ## Key Features
-1. **FPS Controller**: Pointer lock mouse capture, smooth movement with collision detection
-2. **Dust2 Map**: Platforms, tunnels, bombsites (A/B), ramps, cover boxes
-3. **AK47 Weapon**: Procedural 3D model with:
-   - Recoil animation on fire
-   - Movement bob
-   - Muzzle flash effect
+
+### 1. FPS Controller
+- Pointer lock mouse capture
+- Smooth movement with collision detection
+- WASD movement with acceleration
+- Jump mechanics with landing effect
+- Walking state detection
+
+### 2. Walking Simulation
+- Head bob animation synchronized with footsteps
+- Footstep sounds (Web Audio API)
+- Landing impact effect
+- Movement speed variation (slower when idle)
+
+### 3. Breathing System
+- Subtle FOV breathing effect
+- Camera sway from breathing
+- Intensity varies with movement state
+
+### 4. Dust2 Map
+- Platforms, tunnels, bombsites (A/B)
+- Ramps, cover boxes, pillars
+- Gradient skybox with fog
+- Dynamic lighting
+
+### 5. AK47 Weapon
+- Procedural 3D model
+- Recoil animation on fire
+- Movement bob synchronized with player
+- Breathing sway
+- Muzzle flash effect
+
+### 6. UI System
+- Crosshair with dot
+- Weapon info display
+- Animated controls panel
+- Movement status indicator
+- Start screen with animations
 
 ## Build & Run
 ```bash
@@ -52,6 +88,13 @@ pnpm preview     # Preview production build
 ## Game Flow
 1. Page loads with start screen
 2. Click "CLICK TO PLAY" to start
-3. Click again to lock cursor
-4. WASD to move, mouse to look
-5. Left click to shoot
+3. Controls panel animates in
+4. Click again to lock cursor
+5. WASD to move, mouse to look
+6. Left click to shoot
+7. Space to jump
+8. ESC to release cursor
+
+## Audio Features
+- Footstep sounds on walking (Web Audio API oscillator)
+- Sounds trigger at regular intervals while moving

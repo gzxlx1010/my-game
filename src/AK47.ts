@@ -4,14 +4,13 @@ export class AK47 {
   private weaponGroup: THREE.Group;
   private camera: THREE.Camera;
   
-  private readonly BASE_POSITION = new THREE.Vector3(25, -20, -35);
-  private readonly BASE_ROTATION = new THREE.Euler(-0.05, 0.15, 0.08);
+  private readonly BASE_POSITION = new THREE.Vector3(22, -18, -32);
+  private readonly BASE_ROTATION = new THREE.Euler(-0.08, 0.12, 0.06);
   
   private recoilAmount = 0;
-  private bobAmount = 0;
-  private bobSpeed = 8;
   private time = 0;
-  private isMoving = false;
+  private walkTime = 0;
+  private breathTime = 0;
 
   constructor(camera: THREE.Camera) {
     this.camera = camera;
@@ -160,30 +159,39 @@ export class AK47 {
     this.recoilAmount = 1.0;
   }
 
-  public update(delta: number, isMoving: boolean): void {
+  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): void {
     this.time += delta;
-    this.isMoving = isMoving;
+    this.walkTime = walkTime;
+    this.breathTime = breathTime;
 
     // Recoil recovery
     this.recoilAmount *= 0.85;
     
-    // Movement bob
-    const targetBob = this.isMoving ? 1.0 : 0.0;
-    this.bobAmount += (targetBob - this.bobAmount) * 5 * delta;
+    // Walking bob with synchronized animation
+    const walkSpeed = 12;
+    const bobX = Math.sin(this.walkTime * walkSpeed) * 1.8 * (isMoving ? 1 : 0.1);
+    const bobY = Math.abs(Math.cos(this.walkTime * walkSpeed)) * 2.5 * (isMoving ? 1 : 0.1);
     
-    // Calculate bob
-    const bobX = Math.sin(this.time * this.bobSpeed) * 2 * this.bobAmount;
-    const bobY = Math.abs(Math.cos(this.time * this.bobSpeed)) * 3 * this.bobAmount;
+    // Breathing sway
+    const breathSwayX = Math.sin(this.breathTime) * 0.02;
+    const breathSwayY = Math.cos(this.breathTime * 0.7) * 0.015;
     
-    // Apply position
-    this.weaponGroup.position.x = this.BASE_POSITION.x + bobX;
-    this.weaponGroup.position.y = this.BASE_POSITION.y - bobY - this.recoilAmount * 5;
-    this.weaponGroup.position.z = this.BASE_POSITION.z + this.recoilAmount * 3;
+    // Apply position with smoothing
+    const targetX = this.BASE_POSITION.x + bobX + breathSwayX;
+    const targetY = this.BASE_POSITION.y - bobY - this.recoilAmount * 4 + breathSwayY;
+    const targetZ = this.BASE_POSITION.z + this.recoilAmount * 2.5;
+    
+    this.weaponGroup.position.x += (targetX - this.weaponGroup.position.x) * 0.3;
+    this.weaponGroup.position.y += (targetY - this.weaponGroup.position.y) * 0.3;
+    this.weaponGroup.position.z += (targetZ - this.weaponGroup.position.z) * 0.3;
     
     // Apply rotation
-    this.weaponGroup.rotation.x = this.BASE_ROTATION.x + this.recoilAmount * 0.3;
-    this.weaponGroup.rotation.y = this.BASE_ROTATION.y;
-    this.weaponGroup.rotation.z = this.BASE_ROTATION.z;
+    const recoilRotX = this.recoilAmount * 0.25;
+    const recoilRotZ = this.recoilAmount * 0.05;
+    
+    this.weaponGroup.rotation.x = this.BASE_ROTATION.x + recoilRotX;
+    this.weaponGroup.rotation.y = this.BASE_ROTATION.y + bobX * 0.01;
+    this.weaponGroup.rotation.z = this.BASE_ROTATION.z + recoilRotZ;
   }
 
   public getGroup(): THREE.Group {

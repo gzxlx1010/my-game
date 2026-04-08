@@ -8,15 +8,51 @@
   </head>
   <body>
     <div id="game-container"></div>
-    <div id="crosshair"></div>
+    <div id="crosshair">
+      <div class="dot"></div>
+    </div>
     <div id="hud">
       <div id="weapon-info">
         <span id="weapon-name">AK-47</span>
       </div>
-      <div id="controls-hint">
-        <p>WASD - Move | Mouse - Look | Click - Shoot | Space - Jump</p>
+    </div>
+    
+    <!-- 操作提示面板 -->
+    <div id="controls-panel">
+      <h3>Controls</h3>
+      <div class="control-row">
+        <div class="wasd-hint">
+          <div class="key key-w">W</div>
+          <div class="key key-a">A</div>
+          <div class="key key-s">S</div>
+          <div class="key key-d">D</div>
+        </div>
+        <span class="desc">移动</span>
+      </div>
+      <div class="control-row">
+        <div class="key">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L12 22M12 2L6 8M12 2L18 8"/>
+          </svg>
+        </div>
+        <span class="desc">鼠标 - 视角</span>
+      </div>
+      <div class="control-row">
+        <div class="key">LMB</div>
+        <span class="desc">射击</span>
+      </div>
+      <div class="control-row">
+        <div class="key">Space</div>
+        <span class="desc">跳跃</span>
+      </div>
+      <div class="control-row">
+        <div class="key">ESC</div>
+        <span class="desc">释放鼠标</span>
       </div>
     </div>
+    
+    <div id="movement-indicator">WALKING</div>
+    
     <div id="start-screen">
       <div class="start-content">
         <h1>DUST2 FPS</h1>

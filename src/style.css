@@ -36,10 +36,11 @@ body {
   content: '';
   position: absolute;
   background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
 }
 
 #crosshair::before {
-  width: 20px;
+  width: 18px;
   height: 2px;
   top: 50%;
   left: 50%;
@@ -48,7 +49,7 @@ body {
 
 #crosshair::after {
   width: 2px;
-  height: 20px;
+  height: 18px;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
@@ -56,13 +57,14 @@ body {
 
 #crosshair .dot {
   position: absolute;
-  width: 4px;
-  height: 4px;
+  width: 3px;
+  height: 3px;
   background: #ff0000;
   border-radius: 50%;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px #ff0000;
 }
 
 #hud {
@@ -82,6 +84,7 @@ body {
   font-weight: bold;
   text-transform: uppercase;
   letter-spacing: 2px;
+  border: 1px solid rgba(255, 107, 53, 0.3);
 }
 
 #controls-hint {
@@ -89,6 +92,124 @@ body {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
 }
+
+/* 操作提示面板 */
+#controls-panel {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  padding: 15px 20px;
+  border-radius: 8px;
+  z-index: 100;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+#controls-panel h3 {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  padding-bottom: 8px;
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  margin: 8px 0;
+  opacity: 0;
+  animation: slideInRight 0.5s ease forwards;
+}
+
+.control-row:nth-child(1) { animation-delay: 0.2s; }
+.control-row:nth-child(2) { animation-delay: 0.4s; }
+.control-row:nth-child(3) { animation-delay: 0.6s; }
+.control-row:nth-child(4) { animation-delay: 0.8s; }
+.control-row:nth-child(5) { animation-delay: 1.0s; }
+.control-row:nth-child(6) { animation-delay: 1.2s; }
+
+.key {
+  background: linear-gradient(145deg, #3a3a3a, #2a2a2a);
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  margin-right: 10px;
+  min-width: 30px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.key-group {
+  display: flex;
+  gap: 4px;
+}
+
+.key-group .key {
+  min-width: 24px;
+  padding: 5px 8px;
+}
+
+.desc {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+}
+
+/* 按键按下动画效果 */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* 持续闪烁提示动画 */
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    box-shadow: 0 0 5px rgba(255, 107, 53, 0.5);
+  }
+  50% {
+    opacity: 0.7;
+    box-shadow: 0 0 15px rgba(255, 107, 53, 0.8);
+  }
+}
+
+/* 移动时的按键高亮提示 */
+.control-row.active .key {
+  background: linear-gradient(145deg, #ff6b35, #f7931e);
+  animation: pulse 0.5s ease infinite;
+}
+
+/* WASD移动键组 */
+.wasd-hint {
+  display: grid;
+  grid-template-columns: repeat(3, 28px);
+  grid-template-rows: repeat(2, 24px);
+  gap: 2px;
+  margin-right: 10px;
+}
+
+.wasd-hint .key {
+  min-width: 28px;
+  padding: 3px 6px;
+  font-size: 11px;
+}
+
+.wasd-hint .key-w { grid-column: 2; grid-row: 1; }
+.wasd-hint .key-a { grid-column: 1; grid-row: 2; }
+.wasd-hint .key-s { grid-column: 2; grid-row: 2; }
+.wasd-hint .key-d { grid-column: 3; grid-row: 2; }
 
 #start-screen {
   position: fixed;
@@ -122,6 +243,16 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
   text-shadow: 0 0 40px rgba(255, 107, 53, 0.5);
+  animation: titleGlow 2s ease-in-out infinite;
+}
+
+@keyframes titleGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 20px rgba(255, 107, 53, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 40px rgba(255, 107, 53, 0.8));
+  }
 }
 
 .start-content .subtitle {
@@ -143,11 +274,39 @@ body {
   cursor: pointer;
   transition: all 0.3s ease;
   text-transform: uppercase;
+  animation: btnPulse 2s ease-in-out infinite;
+}
+
+@keyframes btnPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(255, 107, 53, 0.4);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 30px rgba(255, 107, 53, 0.6);
+  }
 }
 
 #start-btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 0 30px rgba(255, 107, 53, 0.6);
+  box-shadow: 0 0 40px rgba(255, 107, 53, 0.8);
+}
+
+/* 提示动画 - 首次游玩时显示 */
+.hint-fade {
+  animation: hintFadeIn 0.5s ease forwards;
+}
+
+@keyframes hintFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @keyframes muzzle-flash {
@@ -166,4 +325,24 @@ body {
   pointer-events: none;
   z-index: 99;
   animation: muzzle-flash 0.1s ease-out forwards;
+}
+
+/* 移动状态指示器 */
+#movement-indicator {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+#movement-indicator.visible {
+  opacity: 1;
 }
