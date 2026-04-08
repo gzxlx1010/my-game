@@ -20,6 +20,7 @@ export abstract class Weapon {
   protected isReloading = false;
   protected reloadTime = 0;
   protected magazineOffset = 0;
+  protected reloadLift = 0;  // 换弹时枪上抬的角度
   protected isMouseDown = false;
   protected lastShotTime = 0;
   
@@ -114,6 +115,7 @@ export abstract class Weapon {
     this.isReloading = true;
     this.reloadTime = 0;
     this.magazineOffset = 0;
+    this.reloadLift = 0;
     this.showReloadIndicator();
   }
   
@@ -169,17 +171,29 @@ export abstract class Weapon {
       this.reloadTime += delta;
       const progress = this.reloadTime / this.config.reloadTime;
       
-      if (progress < 0.4) {
-        this.magazineOffset = progress * 3;
-      } else if (progress < 0.6) {
-        this.magazineOffset = 1.2;
-      } else if (progress < 1.0) {
-        this.magazineOffset = 1.2 - (progress - 0.6) * 6;
+      // 换弹动画：枪往上抬，停留，然后恢复
+      // 0% - 20%: 枪快速上抬
+      // 20% - 70%: 保持在上抬位置
+      // 70% - 100%: 平滑恢复到原位（带缓冲）
+      if (progress < 0.2) {
+        // 快速上抬，使用 ease-out
+        const t = progress / 0.2;
+        this.reloadLift = this.easeOutQuad(t) * 0.15;
+      } else if (progress < 0.7) {
+        // 保持在上抬位置
+        this.reloadLift = 0.15;
+      } else {
+        // 平滑恢复，使用 ease-in-out
+        const t = (progress - 0.7) / 0.3;
+        this.reloadLift = 0.15 * this.easeInOutQuad(1 - t);
       }
       
       if (this.reloadTime >= this.config.reloadTime) {
         this.completeReload();
       }
+    } else {
+      // 非换弹状态时平滑恢复
+      this.reloadLift *= 0.85;
     }
     
     // Auto fire
@@ -232,5 +246,14 @@ export abstract class Weapon {
   
   public getWeaponName(): string {
     return this.config.name;
+  }
+  
+  // 缓动函数
+  private easeOutQuad(t: number): number {
+    return t * (2 - t);
+  }
+  
+  private easeInOutQuad(t: number): number {
+    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
   }
 }

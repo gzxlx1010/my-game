@@ -7,7 +7,7 @@ export const AK47_CONFIG: WeaponConfig = {
   fireRate: 0.1,
   damage: 34,  // 3 hits to kill (100 / 34 ≈ 3)
   maxAmmo: 30,
-  reloadTime: 2.0
+  reloadTime: 0.5  // 500ms
 };
 
 export class AK47 extends Weapon {
@@ -193,8 +193,12 @@ export class AK47 extends Weapon {
     const breathSwayX = Math.sin(this.breathTime) * 0.002;
     const breathSwayY = Math.cos(this.breathTime * 0.7) * 0.0015;
     
+    // 换弹时枪上抬效果
+    const reloadLiftY = this.reloadLift;
+    const reloadLiftRot = -this.reloadLift * 2;  // 上抬时旋转
+    
     const targetX = this.BASE_POSITION.x + bobX + breathSwayX;
-    const targetY = this.BASE_POSITION.y - bobY - this.recoilAmount * 0.04 + breathSwayY;
+    const targetY = this.BASE_POSITION.y - bobY - this.recoilAmount * 0.04 + breathSwayY + reloadLiftY;
     const targetZ = this.BASE_POSITION.z + this.recoilAmount * 0.025;
     
     this.weaponGroup.position.x += (targetX - this.weaponGroup.position.x) * 0.2;
@@ -204,7 +208,7 @@ export class AK47 extends Weapon {
     const recoilRotX = this.recoilAmount * 0.25;
     const recoilRotZ = this.recoilAmount * 0.05;
     
-    const targetRotX = this.BASE_ROTATION.x + recoilRotX;
+    const targetRotX = this.BASE_ROTATION.x + recoilRotX + reloadLiftRot;
     const targetRotY = this.BASE_ROTATION.y + bobX * 0.5;
     const targetRotZ = this.BASE_ROTATION.z + recoilRotZ;
     
