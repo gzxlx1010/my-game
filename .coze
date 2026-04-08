@@ -6,5 +6,5 @@ build = ["pnpm", "install"]
 run = ["pnpm", "dev", "--host", "--port", "5000"]
 
 [deploy]
-build = ["pnpm", "build"]
+build = ["pnpm", "install", "&&", "pnpm", "build"]
 run = ["pnpm", "preview", "--host", "--port", "5000"]
