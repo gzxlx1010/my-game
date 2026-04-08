@@ -165,10 +165,10 @@ export class FPSController {
     // Movement with acceleration
     const accel = this.isWalking ? this.MOVE_SPEED : this.MOVE_SPEED * 0.5;
     if (this.moveForward || this.moveBackward) {
-      this.velocity.z -= this.direction.z * accel * delta;
+      this.velocity.z += this.direction.z * accel * delta;
     }
     if (this.moveLeft || this.moveRight) {
-      this.velocity.x -= this.direction.x * accel * delta;
+      this.velocity.x += this.direction.x * accel * delta;
     }
     
     // Apply velocity to position
