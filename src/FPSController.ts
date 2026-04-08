@@ -26,12 +26,12 @@ export class FPSController {
   private isOnGround = true;
   
   // Walking simulation
-  private walkTime = 0;
+  public walkTime = 0;
   private isWalking = false;
   private readonly STEP_INTERVAL = 0.5; // Steps per second
   
   // Breathing simulation
-  private breathTime = 0;
+  public breathTime = 0;
   private breathSpeed = 0.8;
   private baseFOV = 75;
   private targetFOV = 75;
@@ -47,9 +47,8 @@ export class FPSController {
   private landingBob = 0;
   
   // Camera smoothing
-  private smoothLookX = 0;
-  private smoothLookY = 0;
-  private readonly LOOK_SMOOTH = 0.15;
+  private targetEulerX = 0;
+  private targetEulerY = 0;
   
   // Footstep sound
   private lastFootstep = 0;
@@ -137,10 +136,9 @@ export class FPSController {
     if (!this.isLocked) return;
     
     const sensitivity = 0.002;
-    // Apply smoothing to mouse look
-    this.smoothLookX -= event.movementX * sensitivity;
-    this.smoothLookY -= event.movementY * sensitivity;
-    this.smoothLookY = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.smoothLookY));
+    this.targetEulerY -= event.movementX * sensitivity;
+    this.targetEulerX -= event.movementY * sensitivity;
+    this.targetEulerX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetEulerX));
   }
 
   public update(delta: number, colliders: THREE.Mesh[]): void {
@@ -151,8 +149,8 @@ export class FPSController {
     
     // Apply friction
     const friction = this.isWalking ? 8.0 : 10.0;
-    this.velocity.x -= this.velocity.x * friction * delta;
-    this.velocity.z -= this.velocity.z * friction * delta;
+    this.velocity.x *= (1 - friction * delta);
+    this.velocity.z *= (1 - friction * delta);
     
     // Apply gravity
     this.velocityY -= this.GRAVITY * delta;
@@ -231,13 +229,10 @@ export class FPSController {
     // Update camera position
     this.camera.position.copy(this.position);
     
-    // Update camera rotation with smoothing
-    this.euler.setFromQuaternion(this.camera.quaternion);
-    this.euler.y += (this.smoothLookX - this.euler.y) * this.LOOK_SMOOTH;
-    this.euler.x += (this.smoothLookY - this.euler.x) * this.LOOK_SMOOTH;
+    // Smooth camera rotation
+    this.euler.x += (this.targetEulerX - this.euler.x) * 0.15;
+    this.euler.y += (this.targetEulerY - this.euler.y) * 0.15;
     this.camera.quaternion.setFromEuler(this.euler);
-    this.smoothLookX = 0;
-    this.smoothLookY = 0;
     
     // Update head bob and breathing
     this.updateHeadBob(delta);

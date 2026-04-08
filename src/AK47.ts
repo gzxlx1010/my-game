@@ -2,21 +2,22 @@ import * as THREE from 'three';
 
 export class AK47 {
   private weaponGroup: THREE.Group;
-  private camera: THREE.Camera;
   
-  private readonly BASE_POSITION = new THREE.Vector3(22, -18, -32);
-  private readonly BASE_ROTATION = new THREE.Euler(-0.08, 0.12, 0.06);
+  private readonly BASE_POSITION = new THREE.Vector3(18, -16, -28);
+  private readonly BASE_ROTATION = new THREE.Euler(-0.1, 0.1, 0.05);
   
   private recoilAmount = 0;
   private time = 0;
   private walkTime = 0;
   private breathTime = 0;
 
-  constructor(camera: THREE.Camera) {
-    this.camera = camera;
+  constructor(scene: THREE.Scene, _camera: THREE.Camera) {
     this.weaponGroup = new THREE.Group();
     this.createAK47();
     this.setupShooting();
+    
+    // Add to scene, not camera (for proper rendering)
+    scene.add(this.weaponGroup);
   }
 
   private createAK47(): void {
@@ -135,9 +136,6 @@ export class AK47 {
     
     // Scale appropriately for FPS view
     this.weaponGroup.scale.set(0.5, 0.5, 0.5);
-
-    // Add to camera
-    this.camera.add(this.weaponGroup);
   }
 
   private setupShooting(): void {
@@ -159,7 +157,7 @@ export class AK47 {
     this.recoilAmount = 1.0;
   }
 
-  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): void {
+  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number, camera: THREE.Camera): void {
     this.time += delta;
     this.walkTime = walkTime;
     this.breathTime = breathTime;
@@ -176,22 +174,37 @@ export class AK47 {
     const breathSwayX = Math.sin(this.breathTime) * 0.02;
     const breathSwayY = Math.cos(this.breathTime * 0.7) * 0.015;
     
-    // Apply position with smoothing
-    const targetX = this.BASE_POSITION.x + bobX + breathSwayX;
-    const targetY = this.BASE_POSITION.y - bobY - this.recoilAmount * 4 + breathSwayY;
-    const targetZ = this.BASE_POSITION.z + this.recoilAmount * 2.5;
+    // Calculate weapon position relative to camera
+    const forward = new THREE.Vector3();
+    const right = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
     
-    this.weaponGroup.position.x += (targetX - this.weaponGroup.position.x) * 0.3;
-    this.weaponGroup.position.y += (targetY - this.weaponGroup.position.y) * 0.3;
-    this.weaponGroup.position.z += (targetZ - this.weaponGroup.position.z) * 0.3;
+    camera.getWorldDirection(forward);
+    right.crossVectors(forward, up);
     
-    // Apply rotation
+    // Weapon offset from camera
+    const weaponOffset = new THREE.Vector3(
+      this.BASE_POSITION.x + bobX + breathSwayX + right.x * 2,
+      this.BASE_POSITION.y - bobY - this.recoilAmount * 4 + breathSwayY,
+      this.BASE_POSITION.z + this.recoilAmount * 2.5
+    );
+    
+    // Set weapon position in world space
+    this.weaponGroup.position.copy(camera.position);
+    this.weaponGroup.position.add(forward.multiplyScalar(-weaponOffset.z));
+    this.weaponGroup.position.add(right.multiplyScalar(weaponOffset.x));
+    this.weaponGroup.position.y += weaponOffset.y;
+    
+    // Apply rotation to match camera
+    this.weaponGroup.quaternion.copy(camera.quaternion);
+    
+    // Add recoil rotation
     const recoilRotX = this.recoilAmount * 0.25;
     const recoilRotZ = this.recoilAmount * 0.05;
     
-    this.weaponGroup.rotation.x = this.BASE_ROTATION.x + recoilRotX;
-    this.weaponGroup.rotation.y = this.BASE_ROTATION.y + bobX * 0.01;
-    this.weaponGroup.rotation.z = this.BASE_ROTATION.z + recoilRotZ;
+    this.weaponGroup.rotateX(this.BASE_ROTATION.x + recoilRotX);
+    this.weaponGroup.rotateY(this.BASE_ROTATION.y + bobX * 0.01);
+    this.weaponGroup.rotateZ(this.BASE_ROTATION.z + recoilRotZ);
   }
 
   public getGroup(): THREE.Group {

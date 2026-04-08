@@ -45,7 +45,8 @@ class Game {
     const startPosition = new THREE.Vector3(0, 60, 200);
     this.fpsController = new FPSController(this.camera, startPosition);
     
-    this.ak47 = new AK47(this.camera);
+    // Create AK47 weapon (needs scene and camera)
+    this.ak47 = new AK47(this.scene, this.camera);
     
     // Get movement indicator
     this.movementIndicator = document.getElementById('movement-indicator');
@@ -76,10 +77,10 @@ class Game {
     this.fpsController.update(delta, this.dust2Map.colliders);
     
     // Update weapon with animation times
-    const walkTime = this.fpsController['walkTime'] || 0;
-    const breathTime = this.fpsController['breathTime'] || 0;
+    const walkTime = this.fpsController.walkTime;
+    const breathTime = this.fpsController.breathTime;
     const isMoving = this.fpsController.isMoving();
-    this.ak47.update(delta, isMoving, walkTime, breathTime);
+    this.ak47.update(delta, isMoving, walkTime, breathTime, this.camera);
     
     // Update movement indicator
     if (this.movementIndicator) {
