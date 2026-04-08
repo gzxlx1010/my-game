@@ -34,15 +34,43 @@ export abstract class Weapon {
   
   protected audioCtx: AudioContext | null = null;
   
+  // 外部状态引用
+  public mouseDownRef: { value: boolean } | null = null;
+  public audioCtxRef: { value: AudioContext | null } | null = null;
+  
   public abstract config: WeaponConfig;
   
   constructor(scene: THREE.Scene, camera: THREE.Camera) {
     this.scene = scene;
     this.camera = camera;
     this.weaponGroup = new THREE.Group();
-    this.currentAmmo = 30;  // Default, will be set by subclass
+    this.currentAmmo = 30;
     this.maxAmmo = 30;
     this.createAmmoDisplay();
+  }
+  
+  // 获取当前的鼠标按下状态
+  protected getMouseDown(): boolean {
+    if (this.mouseDownRef) return this.mouseDownRef.value;
+    return this.isMouseDown;
+  }
+  
+  // 获取当前的AudioContext
+  protected getAudioCtx(): AudioContext | null {
+    if (this.audioCtxRef) return this.audioCtxRef.value;
+    return this.audioCtx;
+  }
+  
+  // 设置外部状态引用
+  public setExternalState(mouseDownRef: { value: boolean }, audioCtxRef: { value: AudioContext | null }): void {
+    this.mouseDownRef = mouseDownRef;
+    this.audioCtxRef = audioCtxRef;
+  }
+  
+  // 同步鼠标状态
+  public syncMouseState(isDown: boolean): void {
+    this.isMouseDown = isDown;
+    if (this.mouseDownRef) this.mouseDownRef.value = isDown;
   }
   
   protected createAmmoDisplay(): void {
@@ -62,10 +90,14 @@ export abstract class Weapon {
   public abstract createModel(): void;
   
   public initAudio(): void {
-    if (!this.audioCtx) {
+    const ctx = this.getAudioCtx();
+    if (!ctx) {
       this.audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      if (this.audioCtxRef) this.audioCtxRef.value = this.audioCtx;
+    } else {
+      this.audioCtx = ctx;
     }
-    if (this.audioCtx.state === 'suspended') {
+    if (this.audioCtx && this.audioCtx.state === 'suspended') {
       this.audioCtx.resume();
     }
   }
@@ -78,23 +110,26 @@ export abstract class Weapon {
       if (e.button === 0) {
         this.initAudio();
         this.isMouseDown = true;
+        if (this.mouseDownRef) this.mouseDownRef.value = true;
       }
     });
     
     document.addEventListener('mouseup', (e) => {
       if (e.button === 0) {
         this.isMouseDown = false;
+        if (this.mouseDownRef) this.mouseDownRef.value = false;
       }
     });
     
     document.addEventListener('mouseleave', () => {
       this.isMouseDown = false;
+      if (this.mouseDownRef) this.mouseDownRef.value = false;
     });
     
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyR') {
         this.initAudio();
-        if (!this.isReloading && this.currentAmmo < this.maxAmmo) {
+        if (!this.isReloading && this.currentAmmo < this.maxAmmo && this.maxAmmo > 0) {
           this.startReload();
         }
       }
@@ -255,7 +290,7 @@ export abstract class Weapon {
   }
   
   public canShoot(): boolean {
-    return this.isMouseDown && !this.isReloading && this.currentAmmo > 0;
+    return this.getMouseDown() && !this.isReloading && this.currentAmmo > 0;
   }
   
   public getDamage(): number {

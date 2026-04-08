@@ -95,8 +95,8 @@ export class Remington extends Weapon {
   }
   
   public playShotSound(): void {
-    if (!this.audioCtx) return;
-    const ctx = this.audioCtx;
+    const ctx = this.getAudioCtx();
+    if (!ctx) return;
     
     // 霰弹枪声音：短促的"砰"声，带有金属质感
     const bufferSize = Math.floor(ctx.sampleRate * 0.3);
@@ -141,8 +141,8 @@ export class Remington extends Weapon {
   }
   
   public playReloadSound(): void {
-    if (!this.audioCtx) return;
-    const ctx = this.audioCtx;
+    const ctx = this.getAudioCtx();
+    if (!ctx) return;
     
     // 泵动霰弹枪的金属咔哒声
     const osc = ctx.createOscillator();

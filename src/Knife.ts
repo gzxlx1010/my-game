@@ -98,7 +98,7 @@ export class Knife extends Weapon {
   }
   
   public canShoot(): boolean {
-    return this.isMouseDown && !this.isSwinging;
+    return this.getMouseDown() && !this.isSwinging;
   }
   
   public shoot(): boolean {
@@ -114,8 +114,8 @@ export class Knife extends Weapon {
   }
   
   private playSwingSound(): void {
-    if (!this.audioCtx) return;
-    const ctx = this.audioCtx;
+    const ctx = this.getAudioCtx();
+    if (!ctx) return;
     
     // 匕首划动的声音
     const bufferSize = Math.floor(ctx.sampleRate * 0.2);
@@ -153,8 +153,8 @@ export class Knife extends Weapon {
   }
   
   public playHitSound(): void {
-    if (!this.audioCtx) return;
-    const ctx = this.audioCtx;
+    const ctx = this.getAudioCtx();
+    if (!ctx) return;
     
     // 击中音效
     const osc = ctx.createOscillator();
@@ -207,7 +207,7 @@ export class Knife extends Weapon {
     let didShoot = false;
     
     // Auto swing
-    if (this.isMouseDown && !this.isReloading) {
+    if (this.getMouseDown() && !this.isReloading) {
       const currentTime = performance.now() / 1000;
       if (currentTime - this.lastShotTime >= this.config.fireRate) {
         if (!this.isSwinging) {

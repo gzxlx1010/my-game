@@ -23,6 +23,8 @@ class Game {
   private isRunning = false;
   private movementIndicator!: HTMLElement | null;
   private sprintIndicator!: HTMLElement | null;
+  private isMouseDown = false; // 全局鼠标状态
+  private audioCtx: AudioContext | null = null; // 共享AudioContext
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -62,9 +64,22 @@ class Game {
     this.scene.add(this.camera);
     
     // 创建武器
-    this.weapons.set(1, new AK47(this.scene, this.camera));
-    this.weapons.set(2, new Remington(this.scene, this.camera));
-    this.weapons.set(3, new Knife(this.scene, this.camera));
+    const ak47 = new AK47(this.scene, this.camera);
+    const remington = new Remington(this.scene, this.camera);
+    const knife = new Knife(this.scene, this.camera);
+    
+    // 创建共享状态引用
+    const mouseDownRef = { value: this.isMouseDown };
+    const audioCtxRef = { value: this.audioCtx };
+    
+    // 设置武器的外部状态引用
+    ak47.setExternalState(mouseDownRef, audioCtxRef);
+    remington.setExternalState(mouseDownRef, audioCtxRef);
+    knife.setExternalState(mouseDownRef, audioCtxRef);
+    
+    this.weapons.set(1, ak47);
+    this.weapons.set(2, remington);
+    this.weapons.set(3, knife);
     this.currentWeapon = this.weapons.get(1)!;
     
     // 设置武器控制
@@ -109,6 +124,9 @@ class Game {
     this.currentWeapon = newWeapon;
     this.currentWeaponSlot = slot;
     this.currentWeapon.getWeaponGroup().visible = true;
+    
+    // 同步当前鼠标状态到新武器
+    this.currentWeapon.syncMouseState(this.isMouseDown);
     
     // 更新UI
     this.updateWeaponUI();

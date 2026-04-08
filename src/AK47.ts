@@ -112,8 +112,8 @@ export class AK47 extends Weapon {
   }
   
   public playShotSound(): void {
-    if (!this.audioCtx) return;
-    const ctx = this.audioCtx;
+    const ctx = this.getAudioCtx();
+    if (!ctx) return;
     
     const bufferSize = Math.floor(ctx.sampleRate * 0.15);
     const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -150,8 +150,8 @@ export class AK47 extends Weapon {
   }
   
   public playReloadSound(): void {
-    if (!this.audioCtx) return;
-    const ctx = this.audioCtx;
+    const ctx = this.getAudioCtx();
+    if (!ctx) return;
     
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
