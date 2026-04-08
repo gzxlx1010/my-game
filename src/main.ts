@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FPSController } from './FPSController';
 import { Dust2Map } from './Dust2Map';
 import { AK47 } from './AK47';
+import { Enemy } from './Enemy';
 
 class Game {
   private scene: THREE.Scene;
@@ -10,6 +11,7 @@ class Game {
   private fpsController!: FPSController;
   private dust2Map!: Dust2Map;
   private ak47!: AK47;
+  private enemy!: Enemy;
   private clock: THREE.Clock;
   private isRunning = false;
   private movementIndicator!: HTMLElement | null;
@@ -60,8 +62,13 @@ class Game {
     // Add camera to scene (needed for weapon attached to camera)
     this.scene.add(this.camera);
     
-    // Create AK47 weapon (needs scene and camera)
+    // Create AK47 weapon
     this.ak47 = new AK47(this.scene, this.camera);
+    
+    // Create enemy system
+    this.enemy = new Enemy(this.scene);
+    this.enemy.setColliders(this.dust2Map.colliders);
+    this.enemy.spawnEnemies(6);
     
     // Get movement indicator
     this.movementIndicator = document.getElementById('movement-indicator');
@@ -102,6 +109,9 @@ class Game {
     const breathTime = this.fpsController.breathTime;
     const isMoving = this.fpsController.isMoving();
     this.ak47.update(delta, isMoving, walkTime, breathTime);
+    
+    // Update enemies
+    this.enemy.update(delta, this.fpsController.getPosition());
     
     // Update movement indicator
     if (this.movementIndicator) {
