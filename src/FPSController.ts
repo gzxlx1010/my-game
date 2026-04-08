@@ -12,11 +12,13 @@ export class FPSController {
   private moveBackward = false;
   private moveLeft = false;
   private moveRight = false;
+  private sprint = false;
   private canJump = true;
   
   private isLocked = false;
   
   private readonly MOVE_SPEED = 280;
+  private readonly SPRINT_SPEED = 500;
   private readonly JUMP_FORCE = 28;
   private readonly GRAVITY = 60;
   private readonly PLAYER_HEIGHT = 20;
@@ -108,6 +110,10 @@ export class FPSController {
           this.landingBob = 0;
         }
         break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.sprint = true;
+        break;
     }
   }
 
@@ -128,6 +134,10 @@ export class FPSController {
       case 'KeyD':
       case 'ArrowRight':
         this.moveRight = false;
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.sprint = false;
         break;
     }
   }
@@ -160,8 +170,9 @@ export class FPSController {
     this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
     this.direction.normalize();
     
-    // Movement with acceleration
-    const accel = this.isWalking ? this.MOVE_SPEED : this.MOVE_SPEED * 0.5;
+    // Movement speed - sprint when holding shift
+    const currentSpeed = this.sprint ? this.SPRINT_SPEED : this.MOVE_SPEED;
+    const accel = this.isWalking ? currentSpeed : currentSpeed * 0.5;
     if (this.moveForward || this.moveBackward) {
       this.velocity.z += this.direction.z * accel * delta;
     }
@@ -345,5 +356,9 @@ export class FPSController {
   
   public isMoving(): boolean {
     return this.isWalking;
+  }
+  
+  public isSprinting(): boolean {
+    return this.sprint && this.isWalking;
   }
 }

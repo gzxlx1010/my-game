@@ -29,8 +29,9 @@ export class Enemy {
   ];
   
   private readonly MAX_ENEMIES = 8;
-  private readonly DEATH_DURATION = 2.0;  // 死亡动画持续时间
-  private readonly RESPAWN_DELAY = 5.0;  // 复活延迟
+  private readonly DEATH_DURATION = 2.0;
+  private readonly RESPAWN_DELAY = 5.0;
+  private readonly ENEMY_RADIUS = 8;  // 敌人碰撞半径
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -46,7 +47,6 @@ export class Enemy {
   }
 
   private createEnemy(x: number, z: number): EnemyData {
-    // Create visual group for enemy
     const enemyGroup = new THREE.Group();
     
     // Body
@@ -65,7 +65,7 @@ export class Enemy {
     head.name = 'head';
     enemyGroup.add(head);
     
-    // Eyes (red, for direction indication)
+    // Eyes
     const eyeGeo = new THREE.SphereGeometry(0.5, 8, 8);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -89,17 +89,16 @@ export class Enemy {
     rightLeg.name = 'rightLeg';
     enemyGroup.add(rightLeg);
     
-    // Scale up
     enemyGroup.scale.set(0.5, 0.5, 0.5);
     
-    // Create hitbox mesh (invisible collision mesh)
+    // Hitbox mesh
     const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(5, 5, 20, 8),
+      new THREE.CylinderGeometry(this.ENEMY_RADIUS, this.ENEMY_RADIUS, 20, 16),
       new THREE.MeshStandardMaterial({ 
         color: 0xff0000, 
         transparent: true, 
-        opacity: 0.3,
-        visible: false  // 隐藏碰撞体，只用于射线检测
+        opacity: 0.2,
+        visible: false
       })
     );
     mesh.position.set(x, 10, z);
@@ -127,6 +126,28 @@ export class Enemy {
     this.colliders = colliders;
   }
 
+  private checkCollision(x: number, z: number, enemyPos: THREE.Vector3): boolean {
+    for (const collider of this.colliders) {
+      const box = new THREE.Box3().setFromObject(collider);
+      
+      // 膨胀碰撞盒（敌人半径）
+      const expandedBox = new THREE.Box3(
+        new THREE.Vector3(box.min.x - this.ENEMY_RADIUS, box.min.y, box.min.z - this.ENEMY_RADIUS),
+        new THREE.Vector3(box.max.x + this.ENEMY_RADIUS, box.max.y, box.max.z + this.ENEMY_RADIUS)
+      );
+      
+      const enemyBox = new THREE.Box3(
+        new THREE.Vector3(x - this.ENEMY_RADIUS, enemyPos.y - 10, z - this.ENEMY_RADIUS),
+        new THREE.Vector3(x + this.ENEMY_RADIUS, enemyPos.y + 10, z + this.ENEMY_RADIUS)
+      );
+      
+      if (enemyBox.intersectsBox(expandedBox)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public takeDamage(enemyMesh: THREE.Object3D, damage: number): boolean {
     const enemy = this.enemies.find(e => e.mesh === enemyMesh || e.visualGroup === enemyMesh);
     if (!enemy || enemy.state === 'dying' || enemy.state === 'dead') {
@@ -142,10 +163,9 @@ export class Enemy {
       mat.transparent = true;
       mat.opacity = 0.3;
       this.playDeathSound();
-      return true;  // 敌人死亡
+      return true;
     }
     
-    // 受伤时闪红
     this.flashEnemy(enemy, 0xff0000);
     return false;
   }
@@ -153,10 +173,11 @@ export class Enemy {
   private flashEnemy(enemy: EnemyData, color: number): void {
     const body = enemy.visualGroup.getObjectByName('body') as THREE.Mesh;
     if (body) {
-      const originalColor = (body.material as THREE.MeshStandardMaterial).color.getHex();
-      (body.material as THREE.MeshStandardMaterial).color.setHex(color);
+      const mat = body.material as THREE.MeshStandardMaterial;
+      const originalColor = mat.color.getHex();
+      mat.color.setHex(color);
       setTimeout(() => {
-        (body.material as THREE.MeshStandardMaterial).color.setHex(originalColor);
+        mat.color.setHex(originalColor);
       }, 100);
     }
   }
@@ -190,16 +211,15 @@ export class Enemy {
       if (enemy.state === 'dying') {
         enemy.deathTime += delta;
         
-        // 倒下动画
         const fallProgress = Math.min(enemy.deathTime / this.DEATH_DURATION, 1);
         enemy.visualGroup.rotation.x = fallProgress * Math.PI / 2;
         enemy.visualGroup.position.y = -fallProgress * 10;
         
-        // 逐渐消失
         enemy.visualGroup.traverse((child) => {
           if (child instanceof THREE.Mesh) {
-            child.material.transparent = true;
-            child.material.opacity = 1 - fallProgress;
+            const mat = child.material as THREE.MeshStandardMaterial;
+            mat.transparent = true;
+            mat.opacity = 1 - fallProgress;
           }
         });
         
@@ -269,48 +289,79 @@ export class Enemy {
         }
         
         const moveSpeed = enemy.state === 'chase' ? enemy.speed : enemy.speed * 0.3;
+        
+        // 尝试移动
         let newX = enemy.position.x + direction.x * moveSpeed * delta;
         let newZ = enemy.position.z + direction.z * moveSpeed * delta;
         
-        // Collision avoidance
-        for (const collider of this.colliders) {
-          const box = new THREE.Box3().setFromObject(collider);
-          const enemyBox = new THREE.Box3(
-            new THREE.Vector3(newX - 3, enemy.position.y - 10, newZ - 3),
-            new THREE.Vector3(newX + 3, enemy.position.y + 10, newZ + 3)
-          );
+        // 检查碰撞
+        if (!this.checkCollision(newX, newZ, enemy.position)) {
+          enemy.position.x = newX;
+          enemy.position.z = newZ;
+          enemy.mesh.position.x = newX;
+          enemy.mesh.position.z = newZ;
+        } else {
+          // 碰撞了，尝试绕行
+          const perpDir = new THREE.Vector3(-direction.z, 0, direction.x).normalize();
+          let moved = false;
           
-          if (enemyBox.intersectsBox(box)) {
-            newX = enemy.position.x;
-            newZ = enemy.position.z;
+          // 尝试左侧
+          const leftX = enemy.position.x + perpDir.x * moveSpeed * delta;
+          const leftZ = enemy.position.z + perpDir.z * moveSpeed * delta;
+          
+          if (!this.checkCollision(leftX, leftZ, enemy.position)) {
+            enemy.position.x = leftX;
+            enemy.position.z = leftZ;
+            enemy.mesh.position.x = leftX;
+            enemy.mesh.position.z = leftZ;
+            moved = true;
+          } else {
+            // 尝试右侧
+            const rightX = enemy.position.x - perpDir.x * moveSpeed * delta;
+            const rightZ = enemy.position.z - perpDir.z * moveSpeed * delta;
             
-            const perpDir = new THREE.Vector3(-direction.z, 0, direction.x);
-            if (Math.random() > 0.5) perpDir.negate();
-            newX += perpDir.x * enemy.speed * delta;
-            newZ += perpDir.z * enemy.speed * delta;
+            if (!this.checkCollision(rightX, rightZ, enemy.position)) {
+              enemy.position.x = rightX;
+              enemy.position.z = rightZ;
+              enemy.mesh.position.x = rightX;
+              enemy.mesh.position.z = rightZ;
+              moved = true;
+            }
+          }
+          
+          // 如果左右都走不了，后退
+          if (!moved) {
+            const backX = enemy.position.x - direction.x * moveSpeed * delta * 0.5;
+            const backZ = enemy.position.z - direction.z * moveSpeed * delta * 0.5;
+            
+            if (!this.checkCollision(backX, backZ, enemy.position)) {
+              enemy.position.x = backX;
+              enemy.position.z = backZ;
+              enemy.mesh.position.x = backX;
+              enemy.mesh.position.z = backZ;
+            }
           }
         }
         
-        enemy.position.x = newX;
-        enemy.position.z = newZ;
-        enemy.mesh.position.x = newX;
-        enemy.mesh.position.z = newZ;
-        
         if (enemy.state === 'chase') {
-          enemy.mesh.rotation.y = Math.atan2(direction.x, direction.z);
+          const facingDir = new THREE.Vector3().subVectors(targetPos, enemy.position);
+          if (facingDir.length() > 0.1) {
+            enemy.mesh.rotation.y = Math.atan2(facingDir.x, facingDir.z);
+          }
         }
       }
       
       // Visual feedback for state
       const body = enemy.visualGroup.getObjectByName('body') as THREE.Mesh;
       if (body) {
+        const mat = body.material as THREE.MeshStandardMaterial;
         let color = 0x333333;
         if (enemy.state === 'chase' || enemy.state === 'attack') {
           color = 0xff0000;
         } else if (enemy.state === 'patrol') {
           color = 0xff8800;
         }
-        (body.material as THREE.MeshStandardMaterial).color.setHex(color);
+        mat.color.setHex(color);
       }
     }
   }
@@ -331,8 +382,9 @@ export class Enemy {
     
     enemy.visualGroup.traverse((child) => {
       if (child instanceof THREE.Mesh) {
-        child.material.transparent = false;
-        child.material.opacity = 1;
+        const mat = child.material as THREE.MeshStandardMaterial;
+        mat.transparent = false;
+        mat.opacity = 1;
       }
     });
   }
@@ -345,13 +397,9 @@ export class Enemy {
     return this.enemies.filter(e => e.state !== 'dying' && e.state !== 'dead');
   }
 
-  public getEnemyMeshes(): THREE.Object3D[] {
+  public getAllEnemyMeshes(): THREE.Object3D[] {
     return this.enemies
       .filter(e => e.state !== 'dying' && e.state !== 'dead')
       .map(e => e.mesh);
-  }
-  
-  public getAllEnemyMeshes(): THREE.Object3D[] {
-    return this.enemies.map(e => e.mesh);
   }
 }

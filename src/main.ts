@@ -17,6 +17,7 @@ class Game {
   private clock: THREE.Clock;
   private isRunning = false;
   private movementIndicator!: HTMLElement | null;
+  private sprintIndicator!: HTMLElement | null;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -63,6 +64,7 @@ class Game {
     this.enemy.spawnEnemies(6);
     
     this.movementIndicator = document.getElementById('movement-indicator');
+    this.sprintIndicator = document.getElementById('sprint-indicator');
 
     window.addEventListener('resize', () => this.onResize());
   }
@@ -165,6 +167,14 @@ class Game {
         this.movementIndicator.classList.add('visible');
       } else {
         this.movementIndicator.classList.remove('visible');
+      }
+    }
+    
+    if (this.sprintIndicator) {
+      if (this.fpsController.isSprinting()) {
+        this.sprintIndicator.classList.add('visible');
+      } else {
+        this.sprintIndicator.classList.remove('visible');
       }
     }
     

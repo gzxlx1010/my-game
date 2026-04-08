@@ -397,3 +397,24 @@ html, body {
 #movement-indicator.visible {
   opacity: 1;
 }
+
+/* 疾跑状态指示器 */
+#sprint-indicator {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(0, 255, 136, 0.8);
+  font-size: 12px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+}
+
+#sprint-indicator.visible {
+  opacity: 1;
+}
