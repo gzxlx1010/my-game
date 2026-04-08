@@ -266,6 +266,12 @@ export abstract class Weapon {
     return this.config.pellets || 1;
   }
   
+  public isMelee(): boolean {
+    return this.config.maxAmmo === 0;
+  }
+  
+  public playHitSound?(): void;
+  
   public getWeaponName(): string {
     return this.config.name;
   }

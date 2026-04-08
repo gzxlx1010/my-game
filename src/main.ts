@@ -3,6 +3,7 @@ import { FPSController } from './FPSController';
 import { Dust2Map } from './Dust2Map';
 import { AK47 } from './AK47';
 import { Remington } from './Remington';
+import { Knife } from './Knife';
 import { Enemy } from './Enemy';
 import { ShootingSystem } from './ShootingSystem';
 import { Weapon } from './Weapon';
@@ -14,7 +15,7 @@ class Game {
   private fpsController!: FPSController;
   private dust2Map!: Dust2Map;
   private weapons: Map<number, Weapon> = new Map();
-  private currentWeaponSlot = 1; // 1 = AK47, 2 = Remington
+  private currentWeaponSlot = 1; // 1 = AK47, 2 = Remington, 3 = Knife
   private currentWeapon!: Weapon;
   private enemy!: Enemy;
   private shootingSystem!: ShootingSystem;
@@ -63,6 +64,7 @@ class Game {
     // 创建武器
     this.weapons.set(1, new AK47(this.scene, this.camera));
     this.weapons.set(2, new Remington(this.scene, this.camera));
+    this.weapons.set(3, new Knife(this.scene, this.camera));
     this.currentWeapon = this.weapons.get(1)!;
     
     // 设置武器控制
@@ -88,6 +90,8 @@ class Game {
         this.switchWeapon(1);
       } else if (e.code === 'Digit2') {
         this.switchWeapon(2);
+      } else if (e.code === 'Digit3') {
+        this.switchWeapon(3);
       }
     });
   }
@@ -132,18 +136,24 @@ class Game {
     }
     
     if (ammoDisplay) {
-      const current = this.currentWeapon.getCurrentAmmo();
-      const max = this.currentWeapon.getMaxAmmo();
-      ammoDisplay.innerHTML = `
-        <span class="current">${current}</span><span class="separator">/</span><span class="max">${max}</span>
-      `;
-      
-      // 更新弹药状态样式
-      ammoDisplay.classList.remove('low', 'empty');
-      if (current === 0) {
-        ammoDisplay.classList.add('empty');
-      } else if (current <= max * 0.3) {
-        ammoDisplay.classList.add('low');
+      if (this.currentWeapon.isMelee()) {
+        // 近战武器显示特殊图标
+        ammoDisplay.innerHTML = `<span class="melee-icon">🔪</span>`;
+        ammoDisplay.classList.remove('low', 'empty');
+      } else {
+        const current = this.currentWeapon.getCurrentAmmo();
+        const max = this.currentWeapon.getMaxAmmo();
+        ammoDisplay.innerHTML = `
+          <span class="current">${current}</span><span class="separator">/</span><span class="max">${max}</span>
+        `;
+        
+        // 更新弹药状态样式
+        ammoDisplay.classList.remove('low', 'empty');
+        if (current === 0) {
+          ammoDisplay.classList.add('empty');
+        } else if (current <= max * 0.3) {
+          ammoDisplay.classList.add('low');
+        }
       }
     }
   }
@@ -195,6 +205,10 @@ class Game {
       // 显示击杀标记
       if (killCount > 0) {
         this.showHitMarker();
+        // 匕首命中播放击中音效
+        if (this.currentWeaponSlot === 3 && 'playHitSound' in this.currentWeapon) {
+          (this.currentWeapon as Knife).playHitSound();
+        }
       }
     } else {
       // 单发射击

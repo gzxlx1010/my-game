@@ -205,6 +205,12 @@ html, body {
   50% { opacity: 0.3; transform: scale(0.95); }
 }
 
+/* Melee weapon icon */
+#ammo-display .melee-icon {
+  font-size: 24px;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+}
+
 /* === RELOAD INDICATOR === */
 #reload-indicator {
   font-family: 'Orbitron', sans-serif;

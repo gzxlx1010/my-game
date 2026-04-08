@@ -3,29 +3,30 @@ import type { WeaponConfig } from './Weapon';
 import { Weapon } from './Weapon';
 
 export const KNIFE_CONFIG: WeaponConfig = {
-  name: 'Karambit',
-  fireRate: 0.4,  // 划刀间隔
-  damage: 65,     // 匕首伤害（一刀半血，两刀击杀）
-  maxAmmo: 0,    // 近战武器无弹药
-  reloadTime: 0,  // 无需换弹
+  name: 'Knife',
+  fireRate: 0.5,  // 划刀间隔
+  damage: 65,     // 一刀65伤害，两刀击杀
+  maxAmmo: 0,     // 近战武器无弹药
+  reloadTime: 0
 };
 
 export class Knife extends Weapon {
   public config = KNIFE_CONFIG;
   
-  private readonly BASE_POSITION = new THREE.Vector3(0.2, -0.25, -0.2);
-  private readonly BASE_ROTATION = new THREE.Euler(-0.3, 0.1, -0.5);
+  private readonly BASE_POSITION = new THREE.Vector3(0.18, -0.15, -0.25);
+  private readonly BASE_ROTATION = new THREE.Euler(-0.3, 0.1, -0.1);
   
-  private isSlashing = false;
-  private slashProgress = 0;
-  private slashDuration = 0.3;
+  // 划刀动画状态
+  private isSwinging = false;
+  private swingTime = 0;
+  private readonly SWING_DURATION = 0.25;
+  private readonly SWING_LIFT = 0.25;
   
   constructor(scene: THREE.Scene, camera: THREE.Camera) {
     super(scene, camera);
-    this.currentAmmo = 0;
+    this.currentAmmo = 0;  // 近战武器无弹药
     this.maxAmmo = 0;
     this.createModel();
-    this.setupControls();
     camera.add(this.weaponGroup);
   }
   
@@ -40,231 +41,237 @@ export class Knife extends Weapon {
       roughness: 0.5, 
       metalness: 0.3 
     });
-    const accentMat = new THREE.MeshStandardMaterial({ 
-      color: 0xff3e3e, 
-      roughness: 0.3, 
-      metalness: 0.6 
+    const edgeMat = new THREE.MeshStandardMaterial({ 
+      color: 0xffffff, 
+      roughness: 0.1, 
+      metalness: 1.0 
     });
 
-    // Blade (curved karambit shape)
-    const bladeShape = new THREE.Shape();
-    bladeShape.moveTo(0, 0);
-    bladeShape.bezierCurveTo(0.02, 0.05, 0.04, 0.1, 0.03, 0.15);
-    bladeShape.bezierCurveTo(0.02, 0.18, -0.01, 0.2, -0.02, 0.22);
-    bladeShape.bezierCurveTo(-0.03, 0.18, -0.02, 0.1, 0, 0);
-    
-    const extrudeSettings = {
-      steps: 1,
-      depth: 0.008,
-      bevelEnabled: true,
-      bevelThickness: 0.002,
-      bevelSize: 0.002,
-      bevelSegments: 3
-    };
-    
-    const bladeGeo = new THREE.ExtrudeGeometry(bladeShape, extrudeSettings);
-    const blade = new THREE.Mesh(bladeGeo, bladeMat);
-    blade.rotation.x = Math.PI / 2;
-    blade.position.set(0, 0, 0);
+    // Blade body
+    const blade = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.04, 0.25), bladeMat);
+    blade.position.set(0, 0.01, -0.05);
+    blade.rotation.x = -0.1;
     this.weaponGroup.add(blade);
 
-    // Blade spine (top edge)
-    const spineGeo = new THREE.BoxGeometry(0.005, 0.01, 0.15);
-    const spine = new THREE.Mesh(spineGeo, bladeMat);
-    spine.position.set(0.015, 0.005, 0.08);
-    spine.rotation.x = -0.2;
-    this.weaponGroup.add(spine);
+    // Blade tip (pointed)
+    const tipGeo = new THREE.ConeGeometry(0.012, 0.08, 4);
+    const tip = new THREE.Mesh(tipGeo, bladeMat);
+    tip.position.set(0, 0.01, -0.22);
+    tip.rotation.x = -0.1;
+    tip.rotation.z = Math.PI / 4;
+    this.weaponGroup.add(tip);
+
+    // Blade edge (sharp line)
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.002, 0.001, 0.28), edgeMat);
+    edge.position.set(0.008, 0.01, -0.06);
+    edge.rotation.x = -0.1;
+    this.weaponGroup.add(edge);
 
     // Handle
-    const handleGeo = new THREE.CylinderGeometry(0.015, 0.012, 0.1, 8);
-    const handle = new THREE.Mesh(handleGeo, handleMat);
-    handle.position.set(0, 0, -0.05);
-    handle.rotation.x = Math.PI / 2;
+    const handle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.025, 0.1), handleMat);
+    handle.position.set(0, 0, 0.1);
+    handle.rotation.x = 0.05;
     this.weaponGroup.add(handle);
 
     // Handle wrap pattern
-    for (let i = 0; i < 5; i++) {
-      const wrapGeo = new THREE.TorusGeometry(0.014, 0.003, 6, 12);
-      const wrap = new THREE.Mesh(wrapGeo, accentMat);
-      wrap.position.set(0, 0, -0.02 - i * 0.015);
+    const wrapGeo = new THREE.TorusGeometry(0.012, 0.003, 4, 12);
+    for (let i = 0; i < 4; i++) {
+      const wrap = new THREE.Mesh(wrapGeo, new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+      wrap.position.set(0, 0, 0.07 + i * 0.02);
       wrap.rotation.x = Math.PI / 2;
       this.weaponGroup.add(wrap);
     }
 
-    // Guard
-    const guardGeo = new THREE.TorusGeometry(0.02, 0.004, 8, 16);
-    const guard = new THREE.Mesh(guardGeo, bladeMat);
-    guard.position.set(0, 0, 0.01);
-    guard.rotation.x = Math.PI / 2;
+    // Handle guard
+    const guard = new THREE.Mesh(new THREE.BoxGeometry(0.035, 0.008, 0.015), bladeMat);
+    guard.position.set(0, 0.005, 0.05);
     this.weaponGroup.add(guard);
 
-    // Finger ring (karambit distinctive feature)
-    const ringGeo = new THREE.TorusGeometry(0.018, 0.004, 8, 16);
-    const ring = new THREE.Mesh(ringGeo, bladeMat);
-    ring.position.set(0.015, 0.01, -0.08);
-    this.weaponGroup.add(ring);
-
-    // Blade tip
-    const tipGeo = new THREE.ConeGeometry(0.008, 0.02, 6);
-    const tip = new THREE.Mesh(tipGeo, bladeMat);
-    tip.position.set(0.01, 0.005, 0.22);
-    tip.rotation.x = Math.PI / 2 + 0.3;
-    this.weaponGroup.add(tip);
+    // Blade fuller (groove)
+    const fuller = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.002, 0.18), new THREE.MeshStandardMaterial({ color: 0x808080 }));
+    fuller.position.set(-0.003, 0.015, -0.05);
+    fuller.rotation.x = -0.1;
+    this.weaponGroup.add(fuller);
 
     this.weaponGroup.position.copy(this.BASE_POSITION);
     this.weaponGroup.rotation.copy(this.BASE_ROTATION);
   }
   
   public canShoot(): boolean {
-    if (this.isSlashing) return false;
-    return this.isMouseDown;
+    return this.isMouseDown && !this.isSwinging;
   }
   
-  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): boolean {
-    this.time += delta;
-    this.walkTime += delta;
-    this.breathTime += delta;
-    
-    let didShoot = false;
-    
-    // Auto fire for melee
-    if (this.isMouseDown && !this.isSlashing) {
-      const currentTime = performance.now() / 1000;
-      if (currentTime - this.lastShotTime >= this.config.fireRate) {
-        this.lastShotTime = currentTime;
-        this.slash();
-        didShoot = true;
-      }
-    }
-    
-    // 划刀动画
-    if (this.isSlashing) {
-      this.slashProgress += delta / this.slashDuration;
-      
-      if (this.slashProgress >= 1) {
-        this.slashProgress = 0;
-        this.isSlashing = false;
-      }
-      
-      // 划刀动画：旋转+前探
-      const slashAngle = Math.sin(this.slashProgress * Math.PI) * 0.8;
-      const slashForward = Math.sin(this.slashProgress * Math.PI) * 0.1;
-      
-      this.weaponGroup.position.z = this.BASE_POSITION.z + slashForward;
-      this.weaponGroup.rotation.z = this.BASE_ROTATION.z + slashAngle;
-      this.weaponGroup.rotation.x = this.BASE_ROTATION.x - slashAngle * 0.3;
-    } else {
-      // 非攻击状态平滑恢复
-      this.weaponGroup.position.x += (this.BASE_POSITION.x - this.weaponGroup.position.x) * 0.15;
-      this.weaponGroup.position.y += (this.BASE_POSITION.y - this.weaponGroup.position.y) * 0.15;
-      this.weaponGroup.position.z += (this.BASE_POSITION.z - this.weaponGroup.position.z) * 0.15;
-      
-      this.weaponGroup.rotation.x += (this.BASE_ROTATION.x - this.weaponGroup.rotation.x) * 0.15;
-      this.weaponGroup.rotation.y += (this.BASE_ROTATION.y - this.weaponGroup.rotation.y) * 0.15;
-      this.weaponGroup.rotation.z += (this.BASE_ROTATION.z - this.weaponGroup.rotation.z) * 0.15;
-      
-      // 近战武器待机时的轻微摆动
-      const idleSway = Math.sin(this.time * 2) * 0.02;
-      this.weaponGroup.rotation.y += idleSway;
-    }
-    
-    // 无弹药显示
-    this.updateAmmoDisplay();
-    
-    return didShoot;
+  public shoot(): boolean {
+    if (this.isSwinging) return false;
+    this.isSwinging = true;
+    this.swingTime = 0;
+    this.playShotSound();
+    return true;
   }
   
-  private slash(): void {
-    this.isSlashing = true;
-    this.slashProgress = 0;
-    this.playSlashSound();
+  public playShotSound(): void {
+    this.playSwingSound();
   }
   
-  public playSlashSound(): void {
-    const audioCtx = this.audioCtx || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (!this.audioCtx) this.audioCtx = audioCtx;
+  private playSwingSound(): void {
+    if (!this.audioCtx) return;
+    const ctx = this.audioCtx;
     
-    // 匕首划过的空气声
-    const bufferSize = Math.floor(audioCtx.sampleRate * 0.25);
-    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    // 匕首划动的声音
+    const bufferSize = Math.floor(ctx.sampleRate * 0.2);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const data = buffer.getChannelData(0);
     
     for (let i = 0; i < bufferSize; i++) {
       const t = i / bufferSize;
-      // 快速划过的高频音
-      const whoosh = Math.sin(t * 3000 * Math.PI) * Math.exp(-t * 8) * 0.3;
-      // 金属质感
-      const metal = (Math.random() * 2 - 1) * Math.exp(-t * 12) * 0.2;
-      // 尖锐的呼啸
-      const slice = Math.sin(t * 1500 * Math.PI) * Math.exp(-t * 6) * 0.4;
+      // 快速的嗖声
+      const whoosh = (Math.random() * 2 - 1) * Math.exp(-t * 12);
+      // 低频挥动
+      const sweep = Math.sin(t * 2000 * Math.PI * (1 - t * 0.5)) * Math.exp(-t * 8);
       
-      data[i] = whoosh + metal + slice;
+      data[i] = whoosh * 0.3 + sweep * 0.5;
     }
     
-    const noise = audioCtx.createBufferSource();
+    const noise = ctx.createBufferSource();
     noise.buffer = buffer;
     
-    const highpass = audioCtx.createBiquadFilter();
-    highpass.type = 'highpass';
-    highpass.frequency.value = 500;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 2000;
+    filter.Q.value = 1;
     
-    const lowpass = audioCtx.createBiquadFilter();
-    lowpass.type = 'lowpass';
-    lowpass.frequency.value = 4000;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.4, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
     
-    const gain = audioCtx.createGain();
-    gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
     
-    noise.connect(highpass);
-    highpass.connect(lowpass);
-    lowpass.connect(gain);
-    gain.connect(audioCtx.destination);
-    
-    noise.start(audioCtx.currentTime);
-    noise.stop(audioCtx.currentTime + 0.25);
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.2);
   }
   
   public playHitSound(): void {
-    const audioCtx = this.audioCtx || new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
-    if (!this.audioCtx) this.audioCtx = audioCtx;
+    if (!this.audioCtx) return;
+    const ctx = this.audioCtx;
     
-    // 刀刺入的沉闷声
-    const osc1 = audioCtx.createOscillator();
-    const osc2 = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
+    // 击中音效
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const noise = ctx.createBufferSource();
     
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(300, audioCtx.currentTime);
-    osc1.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.1);
+    // 冲击声
+    const bufferSize = Math.floor(ctx.sampleRate * 0.1);
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+    const noiseData = buffer.getChannelData(0);
     
-    osc2.type = 'sawtooth';
-    osc2.frequency.setValueAtTime(800, audioCtx.currentTime);
-    osc2.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.08);
+    for (let i = 0; i < bufferSize; i++) {
+      const t = i / bufferSize;
+      noiseData[i] = (Math.random() * 2 - 1) * Math.exp(-t * 30);
+    }
     
-    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    noise.buffer = buffer;
     
-    osc1.connect(gain);
-    osc2.connect(gain);
-    gain.connect(audioCtx.destination);
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(300, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, ctx.currentTime + 0.1);
     
-    osc1.start(audioCtx.currentTime);
-    osc2.start(audioCtx.currentTime);
-    osc1.stop(audioCtx.currentTime + 0.15);
-    osc2.stop(audioCtx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.5, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+    
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 1500;
+    
+    osc.connect(filter);
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.1);
+    noise.start(ctx.currentTime);
+    noise.stop(ctx.currentTime + 0.1);
   }
   
-  public isSlashingNow(): boolean {
-    return this.isSlashing;
+  public playReloadSound(): void {
+    // 近战武器无换弹音效
+  }
+  
+  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): boolean {
+    this.time += delta;
+    this.walkTime = walkTime;
+    this.breathTime = breathTime;
+    
+    let didShoot = false;
+    
+    // Auto swing
+    if (this.isMouseDown && !this.isReloading) {
+      const currentTime = performance.now() / 1000;
+      if (currentTime - this.lastShotTime >= this.config.fireRate) {
+        if (!this.isSwinging) {
+          this.lastShotTime = currentTime;
+          didShoot = this.shoot();
+        }
+      }
+    }
+    
+    // 划刀动画
+    if (this.isSwinging) {
+      this.swingTime += delta;
+      const progress = this.swingTime / this.SWING_DURATION;
+      
+      if (progress < 1) {
+        // 划刀动画：快速挥动
+        // 0-30%: 向上挥动
+        // 30-70%: 保持在顶部
+        // 70-100%: 收回
+        if (progress < 0.3) {
+          const t = progress / 0.3;
+          this.recoilAmount = Math.sin(t * Math.PI * 0.5) * this.SWING_LIFT;
+        } else if (progress < 0.7) {
+          this.recoilAmount = this.SWING_LIFT * (1 - (progress - 0.3) / 0.4 * 0.3);
+        } else {
+          const t = (progress - 0.7) / 0.3;
+          this.recoilAmount = this.SWING_LIFT * 0.7 * (1 - t * t);
+        }
+      } else {
+        this.isSwinging = false;
+        this.recoilAmount = 0;
+      }
+    }
+    
+    this.updateWeaponPosition(isMoving);
+    return didShoot;
   }
   
   protected updateWeaponPosition(isMoving: boolean): void {
-    // 近战武器不需要复杂的步伐动画
-    // 保持在基础位置即可
-  }
-  
-  public reload(): void {
-    // 近战武器无换弹动作
+    const walkSpeed = 12;
+    const bobX = Math.sin(this.walkTime * walkSpeed) * 0.015 * (isMoving ? 1 : 0.15);
+    const bobY = Math.abs(Math.cos(this.walkTime * walkSpeed)) * 0.02 * (isMoving ? 1 : 0.15);
+    
+    const breathSwayX = Math.sin(this.breathTime) * 0.002;
+    const breathSwayY = Math.cos(this.breathTime * 0.7) * 0.0015;
+    
+    // 划刀时上扬
+    const swingLift = this.recoilAmount;
+    const swingRot = this.recoilAmount * 1.5;
+    
+    const targetX = this.BASE_POSITION.x + bobX + breathSwayX;
+    const targetY = this.BASE_POSITION.y - bobY + breathSwayY + swingLift;
+    const targetZ = this.BASE_POSITION.z;
+    
+    this.weaponGroup.position.x += (targetX - this.weaponGroup.position.x) * 0.2;
+    this.weaponGroup.position.y += (targetY - this.weaponGroup.position.y) * 0.2;
+    this.weaponGroup.position.z += (targetZ - this.weaponGroup.position.z) * 0.2;
+    
+    const targetRotX = this.BASE_ROTATION.x + swingRot;
+    const targetRotY = this.BASE_ROTATION.y + bobX * 0.3;
+    const targetRotZ = this.BASE_ROTATION.z + bobX * 0.5;
+    
+    this.weaponGroup.rotation.x += (targetRotX - this.weaponGroup.rotation.x) * 0.2;
+    this.weaponGroup.rotation.y += (targetRotY - this.weaponGroup.rotation.y) * 0.2;
+    this.weaponGroup.rotation.z += (targetRotZ - this.weaponGroup.rotation.z) * 0.2;
   }
 }
