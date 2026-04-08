@@ -1,7 +1,7 @@
 import { defineConfig } from 'vite'
 
 export default defineConfig({
-  base: '/my-game/',
+  base: '/',
   build: {
     outDir: 'dist'
   }
