@@ -49,11 +49,11 @@ export class Enemy {
   private createEnemy(x: number, z: number): EnemyData {
     const enemyGroup = new THREE.Group();
     
-    // Body
-    const bodyGeo = new THREE.CylinderGeometry(4, 4, 16, 8);
+    // Body (taller to match player height of 35)
+    const bodyGeo = new THREE.CylinderGeometry(4, 4, 26, 8);
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
     const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 8;
+    body.position.y = 13;
     body.name = 'body';
     enemyGroup.add(body);
     
@@ -61,7 +61,7 @@ export class Enemy {
     const headGeo = new THREE.SphereGeometry(3, 8, 8);
     const headMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
     const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 18;
+    head.position.y = 29;
     head.name = 'head';
     enemyGroup.add(head);
     
@@ -69,11 +69,11 @@ export class Enemy {
     const eyeGeo = new THREE.SphereGeometry(0.5, 8, 8);
     const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
     const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-1, 18, 2.5);
+    leftEye.position.set(-1, 29, 2.5);
     enemyGroup.add(leftEye);
     
     const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    rightEye.position.set(1, 18, 2.5);
+    rightEye.position.set(1, 29, 2.5);
     enemyGroup.add(rightEye);
     
     // Legs
@@ -91,9 +91,9 @@ export class Enemy {
     
     enemyGroup.scale.set(0.5, 0.5, 0.5);
     
-    // Hitbox mesh
+    // Hitbox mesh (height matches player height of 35)
     const mesh = new THREE.Mesh(
-      new THREE.CylinderGeometry(this.ENEMY_RADIUS, this.ENEMY_RADIUS, 20, 16),
+      new THREE.CylinderGeometry(this.ENEMY_RADIUS, this.ENEMY_RADIUS, 35, 16),
       new THREE.MeshStandardMaterial({ 
         color: 0xff0000, 
         transparent: true, 
@@ -101,7 +101,7 @@ export class Enemy {
         visible: false
       })
     );
-    mesh.position.set(x, 10, z);
+    mesh.position.set(x, 17.5, z);
     mesh.castShadow = true;
     mesh.userData.isEnemy = true;
     mesh.userData.enemyGroup = enemyGroup;
@@ -110,7 +110,7 @@ export class Enemy {
     return {
       mesh,
       visualGroup: enemyGroup,
-      position: new THREE.Vector3(x, 10, z),
+      position: new THREE.Vector3(x, 17.5, z),
       speed: 30 + Math.random() * 20,
       health: 100,
       maxHealth: 100,
@@ -137,8 +137,8 @@ export class Enemy {
       );
       
       const enemyBox = new THREE.Box3(
-        new THREE.Vector3(x - this.ENEMY_RADIUS, enemyPos.y - 10, z - this.ENEMY_RADIUS),
-        new THREE.Vector3(x + this.ENEMY_RADIUS, enemyPos.y + 10, z + this.ENEMY_RADIUS)
+        new THREE.Vector3(x - this.ENEMY_RADIUS, enemyPos.y - 17.5, z - this.ENEMY_RADIUS),
+        new THREE.Vector3(x + this.ENEMY_RADIUS, enemyPos.y + 17.5, z + this.ENEMY_RADIUS)
       );
       
       if (enemyBox.intersectsBox(expandedBox)) {
@@ -369,8 +369,8 @@ export class Enemy {
   private respawnEnemy(enemy: EnemyData): void {
     const spawnPoint = this.SPAWN_POINTS[Math.floor(Math.random() * this.SPAWN_POINTS.length)];
     
-    enemy.position.set(spawnPoint.x, 10, spawnPoint.z);
-    enemy.mesh.position.set(spawnPoint.x, 10, spawnPoint.z);
+    enemy.position.set(spawnPoint.x, 17.5, spawnPoint.z);
+    enemy.mesh.position.set(spawnPoint.x, 17.5, spawnPoint.z);
     enemy.health = enemy.maxHealth;
     enemy.state = 'idle';
     enemy.deathTime = 0;
