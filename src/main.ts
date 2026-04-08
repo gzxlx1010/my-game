@@ -2,8 +2,10 @@ import * as THREE from 'three';
 import { FPSController } from './FPSController';
 import { Dust2Map } from './Dust2Map';
 import { AK47 } from './AK47';
+import { Remington } from './Remington';
 import { Enemy } from './Enemy';
 import { ShootingSystem } from './ShootingSystem';
+import { Weapon } from './Weapon';
 
 class Game {
   private scene: THREE.Scene;
@@ -11,7 +13,9 @@ class Game {
   private renderer: THREE.WebGLRenderer;
   private fpsController!: FPSController;
   private dust2Map!: Dust2Map;
-  private ak47!: AK47;
+  private weapons: Map<number, Weapon> = new Map();
+  private currentWeaponSlot = 1; // 1 = AK47, 2 = Remington
+  private currentWeapon!: Weapon;
   private enemy!: Enemy;
   private shootingSystem!: ShootingSystem;
   private clock: THREE.Clock;
@@ -56,7 +60,14 @@ class Game {
     
     this.scene.add(this.camera);
     
-    this.ak47 = new AK47(this.scene, this.camera);
+    // 创建武器
+    this.weapons.set(1, new AK47(this.scene, this.camera));
+    this.weapons.set(2, new Remington(this.scene, this.camera));
+    this.currentWeapon = this.weapons.get(1)!;
+    
+    // 设置武器控制
+    this.setupWeaponControls();
+    
     this.shootingSystem = new ShootingSystem(this.camera);
     this.shootingSystem.setWallColliders(this.dust2Map.colliders);
     
@@ -68,6 +79,73 @@ class Game {
     this.sprintIndicator = document.getElementById('sprint-indicator');
 
     window.addEventListener('resize', () => this.onResize());
+  }
+  
+  private setupWeaponControls(): void {
+    // 武器切换
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Digit1') {
+        this.switchWeapon(1);
+      } else if (e.code === 'Digit2') {
+        this.switchWeapon(2);
+      }
+    });
+  }
+  
+  private switchWeapon(slot: number): void {
+    if (slot === this.currentWeaponSlot) return;
+    
+    const newWeapon = this.weapons.get(slot);
+    if (!newWeapon) return;
+    
+    // 隐藏当前武器
+    this.currentWeapon.getWeaponGroup().visible = false;
+    
+    // 显示新武器
+    this.currentWeapon = newWeapon;
+    this.currentWeaponSlot = slot;
+    this.currentWeapon.getWeaponGroup().visible = true;
+    
+    // 更新UI
+    this.updateWeaponUI();
+  }
+  
+  private updateWeaponUI(): void {
+    const weaponName = document.querySelector('#weapon-info .weapon-name');
+    const ammoDisplay = document.getElementById('ammo-display');
+    const slotIndicator = document.getElementById('weapon-slot-indicator');
+    
+    if (weaponName) {
+      weaponName.textContent = this.currentWeapon.getWeaponName();
+    }
+    
+    if (slotIndicator) {
+      const slots = slotIndicator.querySelectorAll('.slot');
+      slots.forEach(slot => {
+        const slotNum = parseInt((slot as HTMLElement).dataset.slot || '0');
+        if (slotNum === this.currentWeaponSlot) {
+          slot.classList.add('active');
+        } else {
+          slot.classList.remove('active');
+        }
+      });
+    }
+    
+    if (ammoDisplay) {
+      const current = this.currentWeapon.getCurrentAmmo();
+      const max = this.currentWeapon.getMaxAmmo();
+      ammoDisplay.innerHTML = `
+        <span class="current">${current}</span><span class="separator">/</span><span class="max">${max}</span>
+      `;
+      
+      // 更新弹药状态样式
+      ammoDisplay.classList.remove('low', 'empty');
+      if (current === 0) {
+        ammoDisplay.classList.add('empty');
+      } else if (current <= max * 0.3) {
+        ammoDisplay.classList.add('low');
+      }
+    }
   }
 
   private onResize(): void {
@@ -81,63 +159,62 @@ class Game {
 
   public start(): void {
     this.isRunning = true;
+    this.updateWeaponUI();
     this.animate();
   }
 
   private handleShooting(): void {
-    // 检查AK47是否正在射击（鼠标按下且有子弹）
-    if (!this.ak47.canShoot()) return;
+    if (!this.currentWeapon.canShoot()) return;
     
     // 触发后座力
     this.fpsController.triggerRecoil();
     
-    // 获取敌人网格进行射线检测
     const enemyMeshes = this.enemy.getAllEnemyMeshes();
+    const pellets = this.currentWeapon.getPellets();
+    const damage = this.currentWeapon.getDamage();
     
-    // 执行射线检测
-    const hitResult = this.shootingSystem.shoot(enemyMeshes);
-    
-    if (hitResult.hit && hitResult.enemy) {
-      // 命中敌人
-      const killed = this.enemy.takeDamage(hitResult.enemy, this.ak47.getDamage());
+    if (pellets > 1) {
+      // 霰弹枪多发子弹
+      const spread = 0.08; // 散射范围
+      const result = this.shootingSystem.shoot(enemyMeshes, pellets, spread);
       
-      if (killed) {
+      // 对每个命中计算伤害
+      const hitSet = new Set<THREE.Object3D>();
+      let killCount = 0;
+      
+      for (const hit of result.hits) {
+        if (hit.hit && hit.enemy) {
+          if (!hitSet.has(hit.enemy)) {
+            hitSet.add(hit.enemy);
+            const killed = this.enemy.takeDamage(hit.enemy, damage);
+            if (killed) killCount++;
+          }
+        }
+      }
+      
+      // 显示击杀标记
+      if (killCount > 0) {
         this.showHitMarker();
       }
+    } else {
+      // 单发射击
+      const result = this.shootingSystem.shoot(enemyMeshes, 1, 0);
+      
+      if (result.hits.length > 0 && result.hits[0].enemy) {
+        const killed = this.enemy.takeDamage(result.hits[0].enemy, damage);
+        if (killed) {
+          this.showHitMarker();
+        }
+      }
     }
+    
+    // 更新弹药UI
+    this.updateWeaponUI();
   }
   
   private showHitMarker(): void {
     const marker = document.createElement('div');
     marker.className = 'hit-marker';
-    marker.innerHTML = '✕';
-    marker.style.cssText = `
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #ff0000;
-      font-size: 30px;
-      font-weight: bold;
-      pointer-events: none;
-      z-index: 101;
-      text-shadow: 0 0 5px #ff0000;
-      animation: hitMarkerFade 0.3s ease-out forwards;
-    `;
-    
-    // 添加动画样式
-    if (!document.getElementById('hit-marker-style')) {
-      const style = document.createElement('style');
-      style.id = 'hit-marker-style';
-      style.textContent = `
-        @keyframes hitMarkerFade {
-          0% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
-          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
-        }
-      `;
-      document.head.appendChild(style);
-    }
-    
     document.body.appendChild(marker);
     setTimeout(() => marker.remove(), 300);
   }
@@ -156,10 +233,9 @@ class Game {
     const breathTime = this.fpsController.breathTime;
     const isMoving = this.fpsController.isMoving();
     
-    // 更新武器（包含射击逻辑）
-    const didShoot = this.ak47.update(delta, isMoving, walkTime, breathTime);
+    // 更新当前武器
+    const didShoot = this.currentWeapon.update(delta, isMoving, walkTime, breathTime);
     
-    // 如果武器刚刚发射了子弹，进行射线检测
     if (didShoot) {
       this.handleShooting();
     }

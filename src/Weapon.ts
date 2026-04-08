@@ -6,6 +6,7 @@ export interface WeaponConfig {
   damage: number;          // 伤害值
   maxAmmo: number;        // 最大弹药
   reloadTime: number;      // 换弹时间（秒）
+  pellets?: number;       // 霰弹枪散弹数量（可选）
   soundUrl?: string;       // 音效URL（预留）
 }
 
@@ -17,6 +18,7 @@ export abstract class Weapon {
   
   protected currentAmmo: number;
   protected maxAmmo: number;
+  protected pellets: number = 1;  // 默认单发，霰弹枪可设置多发
   protected isReloading = false;
   protected reloadTime = 0;
   protected magazineOffset = 0;
@@ -39,6 +41,21 @@ export abstract class Weapon {
     this.weaponGroup = new THREE.Group();
     this.currentAmmo = 30;  // Default, will be set by subclass
     this.maxAmmo = 30;
+    this.createAmmoDisplay();
+  }
+  
+  protected createAmmoDisplay(): void {
+    if (!document.getElementById('ammo-display')) {
+      const display = document.createElement('div');
+      display.id = 'ammo-display';
+      display.innerHTML = `
+        <span class="current">${this.currentAmmo}</span>
+        <span class="separator">/</span>
+        <span class="max">${this.maxAmmo}</span>
+      `;
+      document.getElementById('weapon-info')?.appendChild(display);
+    }
+    this.updateAmmoDisplay();
   }
   
   public abstract createModel(): void;
@@ -242,6 +259,10 @@ export abstract class Weapon {
   
   public getDamage(): number {
     return this.config.damage;
+  }
+  
+  public getPellets(): number {
+    return this.config.pellets || 1;
   }
   
   public getWeaponName(): string {

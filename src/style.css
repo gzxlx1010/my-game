@@ -110,6 +110,36 @@ html, body {
   background: linear-gradient(90deg, transparent, rgba(255, 62, 62, 0.5), transparent);
 }
 
+/* Weapon Slot Indicator */
+#weapon-slot-indicator {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+#weapon-slot-indicator .slot {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.4);
+  transition: all 0.2s ease;
+}
+
+#weapon-slot-indicator .slot.active {
+  background: rgba(255, 62, 62, 0.3);
+  border-color: #ff3e3e;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(255, 62, 62, 0.3);
+}
+
 #weapon-info .weapon-name {
   font-family: 'Orbitron', sans-serif;
   font-size: 11px;

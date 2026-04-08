@@ -22,22 +22,7 @@ export class AK47 extends Weapon {
     this.maxAmmo = AK47_CONFIG.maxAmmo;
     this.createModel();
     this.setupControls();
-    this.createAmmoDisplay();
     camera.add(this.weaponGroup);
-  }
-  
-  private createAmmoDisplay(): void {
-    if (!document.getElementById('ammo-display')) {
-      const display = document.createElement('div');
-      display.id = 'ammo-display';
-      display.innerHTML = `
-        <span class="current">${this.currentAmmo}</span>
-        <span class="separator">/</span>
-        <span class="max">${this.maxAmmo}</span>
-      `;
-      document.getElementById('weapon-info')?.appendChild(display);
-    }
-    this.updateAmmoDisplay();
   }
   
   public createModel(): void {
