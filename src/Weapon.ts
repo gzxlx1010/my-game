@@ -148,10 +148,12 @@ export abstract class Weapon {
     }
   }
   
-  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): void {
+  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): boolean {
     this.time += delta;
     this.walkTime = walkTime;
     this.breathTime = breathTime;
+    
+    let didShoot = false;
     
     // Reload animation
     if (this.isReloading) {
@@ -177,6 +179,7 @@ export abstract class Weapon {
       if (currentTime - this.lastShotTime >= this.config.fireRate) {
         this.lastShotTime = currentTime;
         this.shoot();
+        didShoot = true;
       }
     }
     
@@ -186,6 +189,8 @@ export abstract class Weapon {
     if (this.magazine && this.isReloading) {
       this.magazine.position.y = -0.09 + this.magazineOffset * 0.1;
     }
+    
+    return didShoot;
   }
   
   protected abstract updateWeaponPosition(isMoving: boolean): void;
@@ -204,6 +209,14 @@ export abstract class Weapon {
   
   public getMaxAmmo(): number {
     return this.maxAmmo;
+  }
+  
+  public canShoot(): boolean {
+    return this.isMouseDown && !this.isReloading && this.currentAmmo > 0;
+  }
+  
+  public getDamage(): number {
+    return this.config.damage;
   }
   
   public getWeaponName(): string {

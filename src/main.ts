@@ -82,9 +82,8 @@ class Game {
   }
 
   private handleShooting(): void {
-    // 检查是否正在射击且可以射击
-    if (this.ak47.isReloadingNow()) return;
-    if (this.ak47.getCurrentAmmo() <= 0) return;
+    // 检查AK47是否正在射击（鼠标按下且有子弹）
+    if (!this.ak47.canShoot()) return;
     
     // 获取敌人网格进行射线检测
     const enemyMeshes = this.enemy.getAllEnemyMeshes();
@@ -94,8 +93,7 @@ class Game {
     
     if (hitResult.hit && hitResult.enemy) {
       // 命中敌人
-      const damage = this.ak47.config.damage;
-      const killed = this.enemy.takeDamage(hitResult.enemy, damage);
+      const killed = this.enemy.takeDamage(hitResult.enemy, this.ak47.getDamage());
       
       if (killed) {
         this.showHitMarker();
@@ -151,12 +149,16 @@ class Game {
     const walkTime = this.fpsController.walkTime;
     const breathTime = this.fpsController.breathTime;
     const isMoving = this.fpsController.isMoving();
-    this.ak47.update(delta, isMoving, walkTime, breathTime);
+    
+    // 更新武器（包含射击逻辑）
+    const didShoot = this.ak47.update(delta, isMoving, walkTime, breathTime);
+    
+    // 如果武器刚刚发射了子弹，进行射线检测
+    if (didShoot) {
+      this.handleShooting();
+    }
     
     this.enemy.update(delta, this.fpsController.getPosition());
-    
-    // 处理射击
-    this.handleShooting();
     
     if (this.movementIndicator) {
       if (isMoving) {
