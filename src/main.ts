@@ -82,6 +82,10 @@ class Game {
     this.weapons.set(3, knife);
     this.currentWeapon = this.weapons.get(1)!;
     
+    // 隐藏非当前武器
+    remington.getWeaponGroup().visible = false;
+    knife.getWeaponGroup().visible = false;
+    
     // 设置武器控制
     this.setupWeaponControls();
     
