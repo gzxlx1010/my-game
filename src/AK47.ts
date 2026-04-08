@@ -4,7 +4,7 @@ export class AK47 {
   private weaponGroup: THREE.Group;
   private magazine: THREE.Mesh | null = null;
   
-  private readonly BASE_POSITION = new THREE.Vector3(18, -16, -28);
+  private readonly BASE_POSITION = new THREE.Vector3(0.22, -0.22, -0.35);
   private readonly BASE_ROTATION = new THREE.Euler(-0.1, 0.1, 0.05);
   
   private recoilAmount = 0;
@@ -28,13 +28,13 @@ export class AK47 {
   // Shared audio context
   private audioCtx: AudioContext | null = null;
 
-  constructor(scene: THREE.Scene, _camera: THREE.Camera) {
+  constructor(_scene: THREE.Scene, camera: THREE.Camera) {
     this.weaponGroup = new THREE.Group();
     this.createAK47();
     this.setupControls();
     
-    // Add to scene, not camera (for proper rendering)
-    scene.add(this.weaponGroup);
+    // Attach weapon to camera (proper FPS weapon handling)
+    camera.add(this.weaponGroup);
     
     // Create ammo display
     this.createAmmoDisplay();
@@ -93,112 +93,109 @@ export class AK47 {
     });
 
     // Receiver (main body)
-    const receiverGeo = new THREE.BoxGeometry(8, 6, 40);
+    const receiverGeo = new THREE.BoxGeometry(0.08, 0.06, 0.4);
     const receiver = new THREE.Mesh(receiverGeo, bodyMaterial);
     receiver.position.set(0, 0, 0);
     this.weaponGroup.add(receiver);
 
     // Barrel
-    const barrelGeo = new THREE.CylinderGeometry(1.5, 1.5, 35, 16);
+    const barrelGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.35, 16);
     const barrel = new THREE.Mesh(barrelGeo, metalMaterial);
     barrel.rotation.x = Math.PI / 2;
-    barrel.position.set(0, 1, -35);
+    barrel.position.set(0, 0.01, -0.35);
     this.weaponGroup.add(barrel);
 
     // Barrel shroud
-    const shroudGeo = new THREE.CylinderGeometry(2.5, 2.5, 25, 16);
+    const shroudGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.25, 16);
     const shroud = new THREE.Mesh(shroudGeo, bodyMaterial);
     shroud.rotation.x = Math.PI / 2;
-    shroud.position.set(0, 1, -25);
+    shroud.position.set(0, 0.01, -0.25);
     this.weaponGroup.add(shroud);
 
     // Front sight
-    const frontSightGeo = new THREE.BoxGeometry(1, 4, 1);
+    const frontSightGeo = new THREE.BoxGeometry(0.01, 0.04, 0.01);
     const frontSight = new THREE.Mesh(frontSightGeo, metalMaterial);
-    frontSight.position.set(0, 3.5, -40);
+    frontSight.position.set(0, 0.035, -0.4);
     this.weaponGroup.add(frontSight);
 
     // Magazine (separate mesh for reload animation)
-    const magGeo = new THREE.BoxGeometry(3, 12, 6);
+    const magGeo = new THREE.BoxGeometry(0.03, 0.12, 0.06);
     const magMat = new THREE.MeshStandardMaterial({
       color: 0x2a2a2a,
       roughness: 0.4,
       metalness: 0.6
     });
     this.magazine = new THREE.Mesh(magGeo, magMat);
-    this.magazine.position.set(0, -9, -5);
+    this.magazine.position.set(0, -0.09, -0.05);
     this.magazine.rotation.x = 0.2;
     this.weaponGroup.add(this.magazine);
 
     // Pistol grip
-    const gripGeo = new THREE.BoxGeometry(4, 10, 5);
+    const gripGeo = new THREE.BoxGeometry(0.04, 0.1, 0.05);
     const grip = new THREE.Mesh(gripGeo, woodMaterial);
-    grip.position.set(0, -8, 10);
+    grip.position.set(0, -0.08, 0.1);
     grip.rotation.x = -0.3;
     this.weaponGroup.add(grip);
 
     // Stock (wooden)
-    const stockGeo = new THREE.BoxGeometry(4, 5, 18);
+    const stockGeo = new THREE.BoxGeometry(0.04, 0.05, 0.18);
     const stock = new THREE.Mesh(stockGeo, woodMaterial);
-    stock.position.set(0, -1, 28);
+    stock.position.set(0, -0.01, 0.28);
     this.weaponGroup.add(stock);
 
     // Stock butt
-    const buttGeo = new THREE.BoxGeometry(5, 6, 3);
+    const buttGeo = new THREE.BoxGeometry(0.05, 0.06, 0.03);
     const butt = new THREE.Mesh(buttGeo, woodMaterial);
-    butt.position.set(0, -1, 37);
+    butt.position.set(0, -0.01, 0.37);
     this.weaponGroup.add(butt);
 
     // Handguard
-    const handguardGeo = new THREE.BoxGeometry(4, 4, 15);
+    const handguardGeo = new THREE.BoxGeometry(0.04, 0.04, 0.15);
     const handguard = new THREE.Mesh(handguardGeo, woodMaterial);
-    handguard.position.set(0, -1, -15);
+    handguard.position.set(0, -0.01, -0.15);
     this.weaponGroup.add(handguard);
 
     // Rear sight
-    const rearSightGeo = new THREE.BoxGeometry(3, 3, 2);
+    const rearSightGeo = new THREE.BoxGeometry(0.03, 0.03, 0.02);
     const rearSight = new THREE.Mesh(rearSightGeo, metalMaterial);
-    rearSight.position.set(0, 3.5, 5);
+    rearSight.position.set(0, 0.035, 0.05);
     this.weaponGroup.add(rearSight);
 
     // Dust cover
-    const dustCoverGeo = new THREE.BoxGeometry(7, 1, 20);
+    const dustCoverGeo = new THREE.BoxGeometry(0.07, 0.01, 0.2);
     const dustCover = new THREE.Mesh(dustCoverGeo, bodyMaterial);
-    dustCover.position.set(0, 3.5, 0);
+    dustCover.position.set(0, 0.035, 0);
     this.weaponGroup.add(dustCover);
 
     // Trigger guard
-    const triggerGeo = new THREE.TorusGeometry(2, 0.3, 8, 16, Math.PI);
+    const triggerGeo = new THREE.TorusGeometry(0.02, 0.003, 8, 16, Math.PI);
     const trigger = new THREE.Mesh(triggerGeo, metalMaterial);
-    trigger.position.set(0, -5, 5);
+    trigger.position.set(0, -0.05, 0.05);
     trigger.rotation.x = Math.PI / 2;
     this.weaponGroup.add(trigger);
 
     // Charging handle
-    const chargingHandleGeo = new THREE.BoxGeometry(1, 1.5, 3);
+    const chargingHandleGeo = new THREE.BoxGeometry(0.01, 0.015, 0.03);
     const chargingHandle = new THREE.Mesh(chargingHandleGeo, metalMaterial);
-    chargingHandle.position.set(2, 1, -5);
+    chargingHandle.position.set(0.02, 0.01, -0.05);
     this.weaponGroup.add(chargingHandle);
 
     // Muzzle brake
-    const muzzleGeo = new THREE.CylinderGeometry(2, 2.5, 5, 8);
+    const muzzleGeo = new THREE.CylinderGeometry(0.02, 0.025, 0.05, 8);
     const muzzle = new THREE.Mesh(muzzleGeo, metalMaterial);
     muzzle.rotation.x = Math.PI / 2;
-    muzzle.position.set(0, 1, -48);
+    muzzle.position.set(0, 0.01, -0.48);
     this.weaponGroup.add(muzzle);
 
-    // Set initial position
+    // Set initial position relative to camera
     this.weaponGroup.position.copy(this.BASE_POSITION);
     this.weaponGroup.rotation.copy(this.BASE_ROTATION);
-    
-    // Scale appropriately for FPS view
-    this.weaponGroup.scale.set(0.5, 0.5, 0.5);
   }
 
   private setupControls(): void {
     document.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
-        this.initAudio(); // Initialize audio on first interaction
+        this.initAudio();
         this.isMouseDown = true;
       }
     });
@@ -216,7 +213,7 @@ export class AK47 {
     // Reload with R key
     document.addEventListener('keydown', (e) => {
       if (e.code === 'KeyR') {
-        this.initAudio(); // Initialize audio on first interaction
+        this.initAudio();
         if (!this.isReloading && this.currentAmmo < this.MAX_AMMO) {
           this.startReload();
         }
@@ -228,8 +225,6 @@ export class AK47 {
     this.isReloading = true;
     this.reloadTime = 0;
     this.magazineOffset = 0;
-    
-    // Show reload indicator
     this.showReloadIndicator();
   }
 
@@ -322,7 +317,6 @@ export class AK47 {
     const data = buffer.getChannelData(0);
     
     for (let i = 0; i < bufferSize; i++) {
-      // Add some variation to the noise
       const envelope = Math.pow(1 - i / bufferSize, 1.5);
       data[i] = (Math.random() * 2 - 1) * envelope;
     }
@@ -330,7 +324,7 @@ export class AK47 {
     const noise = ctx.createBufferSource();
     noise.buffer = buffer;
     
-    // Low pass filter for muffled sound
+    // Low pass filter
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = 2000;
@@ -355,7 +349,7 @@ export class AK47 {
     noise.stop(ctx.currentTime + 0.15);
   }
 
-  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number, camera: THREE.Camera): void {
+  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): void {
     this.time += delta;
     this.walkTime = walkTime;
     this.breathTime = breathTime;
@@ -364,16 +358,12 @@ export class AK47 {
     if (this.isReloading) {
       this.reloadTime += delta;
       
-      // Animate magazine dropping and coming back
       const reloadProgress = this.reloadTime / this.RELOAD_DURATION;
       if (reloadProgress < 0.4) {
-        // Magazine drops down
         this.magazineOffset = reloadProgress * 3;
       } else if (reloadProgress < 0.6) {
-        // Magazine at bottom
         this.magazineOffset = 1.2;
       } else if (reloadProgress < 1.0) {
-        // Magazine comes back up
         this.magazineOffset = 1.2 - (reloadProgress - 0.6) * 6;
       }
       
@@ -396,48 +386,40 @@ export class AK47 {
     
     // Walking bob with synchronized animation
     const walkSpeed = 12;
-    const bobX = Math.sin(this.walkTime * walkSpeed) * 1.8 * (isMoving ? 1 : 0.1);
-    const bobY = Math.abs(Math.cos(this.walkTime * walkSpeed)) * 2.5 * (isMoving ? 1 : 0.1);
+    const bobX = Math.sin(this.walkTime * walkSpeed) * 0.018 * (isMoving ? 1 : 0.1);
+    const bobY = Math.abs(Math.cos(this.walkTime * walkSpeed)) * 0.025 * (isMoving ? 1 : 0.1);
     
     // Breathing sway
-    const breathSwayX = Math.sin(this.breathTime) * 0.02;
-    const breathSwayY = Math.cos(this.breathTime * 0.7) * 0.015;
+    const breathSwayX = Math.sin(this.breathTime) * 0.002;
+    const breathSwayY = Math.cos(this.breathTime * 0.7) * 0.0015;
     
     // Calculate weapon position relative to camera
-    const forward = new THREE.Vector3();
-    const right = new THREE.Vector3();
-    const up = new THREE.Vector3(0, 1, 0);
+    // Position is now in camera local space (relative to camera)
+    const targetX = this.BASE_POSITION.x + bobX + breathSwayX;
+    const targetY = this.BASE_POSITION.y - bobY - this.recoilAmount * 0.04 + breathSwayY;
+    const targetZ = this.BASE_POSITION.z + this.recoilAmount * 0.025;
     
-    camera.getWorldDirection(forward);
-    right.crossVectors(forward, up);
+    // Smooth weapon position (reduces jitter during fast camera movement)
+    this.weaponGroup.position.x += (targetX - this.weaponGroup.position.x) * 0.2;
+    this.weaponGroup.position.y += (targetY - this.weaponGroup.position.y) * 0.2;
+    this.weaponGroup.position.z += (targetZ - this.weaponGroup.position.z) * 0.2;
     
-    // Weapon offset from camera
-    const weaponOffset = new THREE.Vector3(
-      this.BASE_POSITION.x + bobX + breathSwayX + right.x * 2,
-      this.BASE_POSITION.y - bobY - this.recoilAmount * 4 + breathSwayY,
-      this.BASE_POSITION.z + this.recoilAmount * 2.5
-    );
-    
-    // Set weapon position in world space
-    this.weaponGroup.position.copy(camera.position);
-    this.weaponGroup.position.add(forward.multiplyScalar(-weaponOffset.z));
-    this.weaponGroup.position.add(right.multiplyScalar(weaponOffset.x));
-    this.weaponGroup.position.y += weaponOffset.y;
-    
-    // Apply rotation to match camera
-    this.weaponGroup.quaternion.copy(camera.quaternion);
-    
-    // Add recoil rotation
+    // Apply rotation
     const recoilRotX = this.recoilAmount * 0.25;
     const recoilRotZ = this.recoilAmount * 0.05;
     
-    this.weaponGroup.rotateX(this.BASE_ROTATION.x + recoilRotX);
-    this.weaponGroup.rotateY(this.BASE_ROTATION.y + bobX * 0.01);
-    this.weaponGroup.rotateZ(this.BASE_ROTATION.z + recoilRotZ);
+    // Smooth rotation
+    const targetRotX = this.BASE_ROTATION.x + recoilRotX;
+    const targetRotY = this.BASE_ROTATION.y + bobX * 0.5;
+    const targetRotZ = this.BASE_ROTATION.z + recoilRotZ;
+    
+    this.weaponGroup.rotation.x += (targetRotX - this.weaponGroup.rotation.x) * 0.2;
+    this.weaponGroup.rotation.y += (targetRotY - this.weaponGroup.rotation.y) * 0.2;
+    this.weaponGroup.rotation.z += (targetRotZ - this.weaponGroup.rotation.z) * 0.2;
     
     // Animate magazine position during reload
     if (this.magazine && this.isReloading) {
-      this.magazine.position.y = -9 + this.magazineOffset;
+      this.magazine.position.y = -0.09 + this.magazineOffset * 0.1;
     }
   }
 

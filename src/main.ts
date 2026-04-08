@@ -98,7 +98,7 @@ class Game {
     const walkTime = this.fpsController.walkTime;
     const breathTime = this.fpsController.breathTime;
     const isMoving = this.fpsController.isMoving();
-    this.ak47.update(delta, isMoving, walkTime, breathTime, this.camera);
+    this.ak47.update(delta, isMoving, walkTime, breathTime);
     
     // Update movement indicator
     if (this.movementIndicator) {
