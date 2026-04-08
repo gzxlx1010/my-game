@@ -18,7 +18,7 @@ export class FPSController {
   
   private readonly MOVE_SPEED = 280;
   private readonly JUMP_FORCE = 28;
-  private readonly GRAVITY = 35;
+  private readonly GRAVITY = 60;
   private readonly PLAYER_HEIGHT = 20;
   private readonly PLAYER_RADIUS = 8;
   
