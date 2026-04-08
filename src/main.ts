@@ -58,6 +58,7 @@ class Game {
     
     this.ak47 = new AK47(this.scene, this.camera);
     this.shootingSystem = new ShootingSystem(this.camera);
+    this.shootingSystem.setWallColliders(this.dust2Map.colliders);
     
     this.enemy = new Enemy(this.scene);
     this.enemy.setColliders(this.dust2Map.colliders);
