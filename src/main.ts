@@ -57,6 +57,9 @@ class Game {
     const startPosition = new THREE.Vector3(0, 40, 400);
     this.fpsController = new FPSController(this.camera, startPosition);
     
+    // Add camera to scene (needed for weapon attached to camera)
+    this.scene.add(this.camera);
+    
     // Create AK47 weapon (needs scene and camera)
     this.ak47 = new AK47(this.scene, this.camera);
     
