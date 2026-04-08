@@ -1,0 +1,212 @@
+import * as THREE from 'three';
+
+export interface WeaponConfig {
+  name: string;
+  fireRate: number;        // 射击间隔（秒）
+  damage: number;          // 伤害值
+  maxAmmo: number;        // 最大弹药
+  reloadTime: number;      // 换弹时间（秒）
+  soundUrl?: string;       // 音效URL（预留）
+}
+
+export abstract class Weapon {
+  protected scene: THREE.Scene;
+  protected camera: THREE.Camera;
+  protected weaponGroup: THREE.Group;
+  protected magazine: THREE.Mesh | null = null;
+  
+  protected currentAmmo: number;
+  protected maxAmmo: number;
+  protected isReloading = false;
+  protected reloadTime = 0;
+  protected magazineOffset = 0;
+  protected isMouseDown = false;
+  protected lastShotTime = 0;
+  
+  protected recoilAmount = 0;
+  protected time = 0;
+  protected walkTime = 0;
+  protected breathTime = 0;
+  
+  protected audioCtx: AudioContext | null = null;
+  
+  public abstract config: WeaponConfig;
+  
+  constructor(scene: THREE.Scene, camera: THREE.Camera) {
+    this.scene = scene;
+    this.camera = camera;
+    this.weaponGroup = new THREE.Group();
+    this.currentAmmo = 30;  // Default, will be set by subclass
+    this.maxAmmo = 30;
+  }
+  
+  public abstract createModel(): void;
+  
+  public initAudio(): void {
+    if (!this.audioCtx) {
+      this.audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    }
+    if (this.audioCtx.state === 'suspended') {
+      this.audioCtx.resume();
+    }
+  }
+  
+  public abstract playShotSound(): void;
+  public abstract playReloadSound(): void;
+  
+  public setupControls(): void {
+    document.addEventListener('mousedown', (e) => {
+      if (e.button === 0) {
+        this.initAudio();
+        this.isMouseDown = true;
+      }
+    });
+    
+    document.addEventListener('mouseup', (e) => {
+      if (e.button === 0) {
+        this.isMouseDown = false;
+      }
+    });
+    
+    document.addEventListener('mouseleave', () => {
+      this.isMouseDown = false;
+    });
+    
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyR') {
+        this.initAudio();
+        if (!this.isReloading && this.currentAmmo < this.maxAmmo) {
+          this.startReload();
+        }
+      }
+    });
+  }
+  
+  protected shoot(): boolean {
+    if (this.isReloading || this.currentAmmo <= 0) {
+      if (this.currentAmmo <= 0 && !this.isReloading) {
+        this.startReload();
+      }
+      return false;
+    }
+    
+    this.currentAmmo--;
+    this.updateAmmoDisplay();
+    this.createMuzzleFlash();
+    this.recoilAmount = 1.0;
+    this.playShotSound();
+    
+    if (this.currentAmmo <= 0) {
+      this.startReload();
+    }
+    
+    return true;
+  }
+  
+  protected createMuzzleFlash(): void {
+    const flash = document.createElement('div');
+    flash.className = 'muzzle-flash';
+    document.body.appendChild(flash);
+    setTimeout(() => flash.remove(), 100);
+  }
+  
+  protected startReload(): void {
+    this.isReloading = true;
+    this.reloadTime = 0;
+    this.magazineOffset = 0;
+    this.showReloadIndicator();
+  }
+  
+  protected showReloadIndicator(): void {
+    const hud = document.getElementById('hud');
+    if (hud && !document.getElementById('reload-indicator')) {
+      const indicator = document.createElement('div');
+      indicator.id = 'reload-indicator';
+      indicator.textContent = 'RELOADING...';
+      hud.appendChild(indicator);
+    }
+  }
+  
+  protected hideReloadIndicator(): void {
+    const indicator = document.getElementById('reload-indicator');
+    if (indicator) indicator.remove();
+  }
+  
+  protected completeReload(): void {
+    this.currentAmmo = this.maxAmmo;
+    this.isReloading = false;
+    this.magazineOffset = 0;
+    this.updateAmmoDisplay();
+    this.hideReloadIndicator();
+    this.playReloadSound();
+  }
+  
+  protected updateAmmoDisplay(): void {
+    const ammoCount = document.querySelector('#ammo-display .current');
+    if (ammoCount) {
+      ammoCount.textContent = this.currentAmmo.toString();
+    }
+  }
+  
+  public update(delta: number, isMoving: boolean, walkTime: number, breathTime: number): void {
+    this.time += delta;
+    this.walkTime = walkTime;
+    this.breathTime = breathTime;
+    
+    // Reload animation
+    if (this.isReloading) {
+      this.reloadTime += delta;
+      const progress = this.reloadTime / this.config.reloadTime;
+      
+      if (progress < 0.4) {
+        this.magazineOffset = progress * 3;
+      } else if (progress < 0.6) {
+        this.magazineOffset = 1.2;
+      } else if (progress < 1.0) {
+        this.magazineOffset = 1.2 - (progress - 0.6) * 6;
+      }
+      
+      if (this.reloadTime >= this.config.reloadTime) {
+        this.completeReload();
+      }
+    }
+    
+    // Auto fire
+    if (this.isMouseDown && !this.isReloading) {
+      const currentTime = performance.now() / 1000;
+      if (currentTime - this.lastShotTime >= this.config.fireRate) {
+        this.lastShotTime = currentTime;
+        this.shoot();
+      }
+    }
+    
+    this.recoilAmount *= 0.85;
+    this.updateWeaponPosition(isMoving);
+    
+    if (this.magazine && this.isReloading) {
+      this.magazine.position.y = -0.09 + this.magazineOffset * 0.1;
+    }
+  }
+  
+  protected abstract updateWeaponPosition(isMoving: boolean): void;
+  
+  public getWeaponGroup(): THREE.Group {
+    return this.weaponGroup;
+  }
+  
+  public isReloadingNow(): boolean {
+    return this.isReloading;
+  }
+  
+  public getCurrentAmmo(): number {
+    return this.currentAmmo;
+  }
+  
+  public getMaxAmmo(): number {
+    return this.maxAmmo;
+  }
+  
+  public getWeaponName(): string {
+    return this.config.name;
+  }
+}

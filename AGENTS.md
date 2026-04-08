@@ -24,8 +24,10 @@ A browser-based first person shooter inspired by CS2's classic Dust2 map. Built 
 │   ├── main.ts            # Game initialization & loop
 │   ├── FPSController.ts   # First-person movement & look controls
 │   ├── Dust2Map.ts        # Map generation & collision objects
-│   ├── AK47.ts            # Weapon model & animations
+│   ├── Weapon.ts          # Weapon base class (abstract)
+│   ├── AK47.ts            # AK47 weapon implementation
 │   ├── Enemy.ts           # Enemy AI system
+│   ├── ShootingSystem.ts  # Raycasting & hit detection
 │   └── style.css          # UI styling (crosshair, HUD, controls panel)
 ├── .coze                   # Project configuration
 └── package.json
@@ -70,17 +72,33 @@ A browser-based first person shooter inspired by CS2's classic Dust2 map. Built 
 - Movement bob synchronized with player
 - Breathing sway
 - Muzzle flash effect
+- Ammo system (30 rounds)
+- Reload animation with R key
 
-### 6. Enemy System
+### 6. Weapon System (Extensible)
+- Abstract `Weapon` base class
+- `WeaponConfig` interface for weapon properties
+- Configurable: fireRate, damage, maxAmmo, reloadTime
+- Easy to add new weapons (M4A1, AWP, etc.)
+
+### 7. Shooting System
+- Raycasting hit detection
+- Hit markers on successful kills
+- Damage calculation based on weapon config
+- AK47: 34 damage per shot (3 hits to kill)
+
+### 8. Enemy System
 - Enemy spawning at key map locations (A site, B site, tunnels, mid)
-- State machine: idle, patrol, chase, attack
+- State machine: idle, patrol, chase, attack, dying, dead
 - Alert range detection (80 units)
 - Attack range (15 units)
 - Collision avoidance with walls
 - Visual state indication (gray=idle, orange=patrol, red=chase/attack)
+- Death animation (falling + fading)
+- Auto respawn after 5 seconds
 - Up to 8 enemies can be spawned
 
-### 7. UI System
+### 9. UI System
 - Crosshair with dot
 - Weapon info display
 - Animated controls panel

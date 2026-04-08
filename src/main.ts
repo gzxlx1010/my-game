@@ -3,6 +3,7 @@ import { FPSController } from './FPSController';
 import { Dust2Map } from './Dust2Map';
 import { AK47 } from './AK47';
 import { Enemy } from './Enemy';
+import { ShootingSystem } from './ShootingSystem';
 
 class Game {
   private scene: THREE.Scene;
@@ -12,6 +13,7 @@ class Game {
   private dust2Map!: Dust2Map;
   private ak47!: AK47;
   private enemy!: Enemy;
+  private shootingSystem!: ShootingSystem;
   private clock: THREE.Clock;
   private isRunning = false;
   private movementIndicator!: HTMLElement | null;
@@ -28,7 +30,6 @@ class Game {
   }
 
   private init(): void {
-    // Setup renderer
     const width = window.innerWidth;
     const height = window.innerHeight;
     
@@ -38,12 +39,7 @@ class Game {
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.setClearColor(0x87ceeb);
-    this.renderer.autoClear = true;
-    this.renderer.autoClearColor = true;
-    this.renderer.autoClearDepth = true;
-    this.renderer.autoClearStencil = false;
     
-    // Set scene background to match sky
     this.scene.background = new THREE.Color(0x87ceeb);
     this.scene.fog = new THREE.Fog(0xc9b896, 200, 1500);
     
@@ -52,28 +48,22 @@ class Game {
       container.appendChild(this.renderer.domElement);
     }
 
-    // Create scene elements
     this.dust2Map = new Dust2Map(this.scene);
     
-    // Camera starts at T spawn (bottom of map)
     const startPosition = new THREE.Vector3(0, 40, 400);
     this.fpsController = new FPSController(this.camera, startPosition);
     
-    // Add camera to scene (needed for weapon attached to camera)
     this.scene.add(this.camera);
     
-    // Create AK47 weapon
     this.ak47 = new AK47(this.scene, this.camera);
+    this.shootingSystem = new ShootingSystem(this.camera);
     
-    // Create enemy system
     this.enemy = new Enemy(this.scene);
     this.enemy.setColliders(this.dust2Map.colliders);
     this.enemy.spawnEnemies(6);
     
-    // Get movement indicator
     this.movementIndicator = document.getElementById('movement-indicator');
 
-    // Handle resize
     window.addEventListener('resize', () => this.onResize());
   }
 
@@ -91,6 +81,63 @@ class Game {
     this.animate();
   }
 
+  private handleShooting(): void {
+    // 检查是否正在射击且可以射击
+    if (this.ak47.isReloadingNow()) return;
+    if (this.ak47.getCurrentAmmo() <= 0) return;
+    
+    // 获取敌人网格进行射线检测
+    const enemyMeshes = this.enemy.getAllEnemyMeshes();
+    
+    // 执行射线检测
+    const hitResult = this.shootingSystem.shoot(enemyMeshes);
+    
+    if (hitResult.hit && hitResult.enemy) {
+      // 命中敌人
+      const damage = this.ak47.config.damage;
+      const killed = this.enemy.takeDamage(hitResult.enemy, damage);
+      
+      if (killed) {
+        this.showHitMarker();
+      }
+    }
+  }
+  
+  private showHitMarker(): void {
+    const marker = document.createElement('div');
+    marker.className = 'hit-marker';
+    marker.innerHTML = '✕';
+    marker.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #ff0000;
+      font-size: 30px;
+      font-weight: bold;
+      pointer-events: none;
+      z-index: 101;
+      text-shadow: 0 0 5px #ff0000;
+      animation: hitMarkerFade 0.3s ease-out forwards;
+    `;
+    
+    // 添加动画样式
+    if (!document.getElementById('hit-marker-style')) {
+      const style = document.createElement('style');
+      style.id = 'hit-marker-style';
+      style.textContent = `
+        @keyframes hitMarkerFade {
+          0% { opacity: 1; transform: translate(-50%, -50%) scale(1.5); }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(marker);
+    setTimeout(() => marker.remove(), 300);
+  }
+
   private animate = (): void => {
     if (!this.isRunning) return;
     
@@ -98,22 +145,19 @@ class Game {
     
     const delta = this.clock.getDelta();
     
-    // Update FPS controller
     this.fpsController.update(delta, this.dust2Map.colliders);
-    
-    // Update skybox position to follow camera
     this.dust2Map.updateSky(this.camera.position);
     
-    // Update weapon with animation times
     const walkTime = this.fpsController.walkTime;
     const breathTime = this.fpsController.breathTime;
     const isMoving = this.fpsController.isMoving();
     this.ak47.update(delta, isMoving, walkTime, breathTime);
     
-    // Update enemies
     this.enemy.update(delta, this.fpsController.getPosition());
     
-    // Update movement indicator
+    // 处理射击
+    this.handleShooting();
+    
     if (this.movementIndicator) {
       if (isMoving) {
         this.movementIndicator.classList.add('visible');
@@ -122,15 +166,12 @@ class Game {
       }
     }
     
-    // Render
     this.renderer.render(this.scene, this.camera);
   }
 }
 
-// Initialize game when DOM is ready
 const game = new Game();
 
-// Handle start button
 const startScreen = document.getElementById('start-screen');
 const startBtn = document.getElementById('start-btn');
 
