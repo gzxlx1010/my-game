@@ -90,6 +90,52 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 2px;
   border: 1px solid rgba(255, 107, 53, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+#weapon-info .weapon-name {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+#ammo-display {
+  font-size: 24px;
+  font-weight: bold;
+  color: #ff6b35;
+  font-family: 'Courier New', monospace;
+}
+
+#ammo-display .current {
+  font-size: 32px;
+}
+
+#ammo-display .separator {
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0 4px;
+}
+
+#ammo-display .max {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 20px;
+}
+
+#reload-indicator {
+  background: rgba(0, 0, 0, 0.8);
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffcc00;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: reloadBlink 0.5s ease-in-out infinite;
+  margin-top: 10px;
+}
+
+@keyframes reloadBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 #controls-hint {

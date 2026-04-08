@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 export class AK47 {
   private weaponGroup: THREE.Group;
+  private magazine: THREE.Mesh | null = null;
   
   private readonly BASE_POSITION = new THREE.Vector3(18, -16, -28);
   private readonly BASE_ROTATION = new THREE.Euler(-0.1, 0.1, 0.05);
@@ -15,14 +16,49 @@ export class AK47 {
   private isMouseDown = false;
   private lastShotTime = 0;
   private readonly FIRE_RATE = 0.1; // 100ms between shots (600 RPM)
+  
+  // Ammo system
+  private currentAmmo = 30;
+  private readonly MAX_AMMO = 30;
+  private isReloading = false;
+  private reloadTime = 0;
+  private readonly RELOAD_DURATION = 2.0; // 2 seconds to reload
+  private magazineOffset = 0; // For reload animation
 
   constructor(scene: THREE.Scene, _camera: THREE.Camera) {
     this.weaponGroup = new THREE.Group();
     this.createAK47();
-    this.setupShooting();
+    this.setupControls();
     
     // Add to scene, not camera (for proper rendering)
     scene.add(this.weaponGroup);
+    
+    // Create ammo display
+    this.createAmmoDisplay();
+  }
+
+  private createAmmoDisplay(): void {
+    // Create ammo UI if not exists
+    if (!document.getElementById('ammo-display')) {
+      const ammoDisplay = document.createElement('div');
+      ammoDisplay.id = 'ammo-display';
+      ammoDisplay.innerHTML = `
+        <span id="ammo-count">${this.currentAmmo}</span> / <span id="ammo-max">${this.MAX_AMMO}</span>
+      `;
+      document.getElementById('hud')?.appendChild(ammoDisplay);
+    }
+    this.updateAmmoDisplay();
+  }
+
+  private updateAmmoDisplay(): void {
+    const ammoCount = document.getElementById('ammo-count');
+    const ammoMax = document.getElementById('ammo-max');
+    if (ammoCount) {
+      ammoCount.textContent = this.currentAmmo.toString();
+    }
+    if (ammoMax) {
+      ammoMax.textContent = this.MAX_AMMO.toString();
+    }
   }
 
   private createAK47(): void {
@@ -71,12 +107,17 @@ export class AK47 {
     frontSight.position.set(0, 3.5, -40);
     this.weaponGroup.add(frontSight);
 
-    // Magazine
+    // Magazine (separate mesh for reload animation)
     const magGeo = new THREE.BoxGeometry(3, 12, 6);
-    const magazine = new THREE.Mesh(magGeo, bodyMaterial);
-    magazine.position.set(0, -9, -5);
-    magazine.rotation.x = 0.2;
-    this.weaponGroup.add(magazine);
+    const magMat = new THREE.MeshStandardMaterial({
+      color: 0x2a2a2a,
+      roughness: 0.4,
+      metalness: 0.6
+    });
+    this.magazine = new THREE.Mesh(magGeo, magMat);
+    this.magazine.position.set(0, -9, -5);
+    this.magazine.rotation.x = 0.2;
+    this.weaponGroup.add(this.magazine);
 
     // Pistol grip
     const gripGeo = new THREE.BoxGeometry(4, 10, 5);
@@ -143,7 +184,7 @@ export class AK47 {
     this.weaponGroup.scale.set(0.5, 0.5, 0.5);
   }
 
-  private setupShooting(): void {
+  private setupControls(): void {
     document.addEventListener('mousedown', (e) => {
       if (e.button === 0) {
         this.isMouseDown = true;
@@ -156,13 +197,89 @@ export class AK47 {
       }
     });
     
-    // Also handle when mouse leaves window
     document.addEventListener('mouseleave', () => {
       this.isMouseDown = false;
     });
+    
+    // Reload with R key
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyR' && !this.isReloading && this.currentAmmo < this.MAX_AMMO) {
+        this.startReload();
+      }
+    });
+  }
+
+  private startReload(): void {
+    this.isReloading = true;
+    this.reloadTime = 0;
+    this.magazineOffset = 0;
+    
+    // Show reload indicator
+    this.showReloadIndicator();
+  }
+
+  private showReloadIndicator(): void {
+    const hud = document.getElementById('hud');
+    if (hud && !document.getElementById('reload-indicator')) {
+      const reloadIndicator = document.createElement('div');
+      reloadIndicator.id = 'reload-indicator';
+      reloadIndicator.textContent = 'RELOADING...';
+      hud.appendChild(reloadIndicator);
+    }
+  }
+
+  private hideReloadIndicator(): void {
+    const indicator = document.getElementById('reload-indicator');
+    if (indicator) {
+      indicator.remove();
+    }
+  }
+
+  private completeReload(): void {
+    this.currentAmmo = this.MAX_AMMO;
+    this.isReloading = false;
+    this.magazineOffset = 0;
+    this.updateAmmoDisplay();
+    this.hideReloadIndicator();
+    this.playReloadSound();
+  }
+
+  private playReloadSound(): void {
+    try {
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(400, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.2);
+      
+      gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.2);
+    } catch {
+      // Audio not supported
+    }
   }
 
   private shoot(): void {
+    // Check if can shoot
+    if (this.isReloading || this.currentAmmo <= 0) {
+      if (this.currentAmmo <= 0 && !this.isReloading) {
+        this.startReload();
+      }
+      return;
+    }
+    
+    // Decrease ammo
+    this.currentAmmo--;
+    this.updateAmmoDisplay();
+    
     // Create muzzle flash
     const flash = document.createElement('div');
     flash.className = 'muzzle-flash';
@@ -174,6 +291,11 @@ export class AK47 {
     
     // Play shot sound
     this.playShotSound();
+    
+    // Auto reload when empty
+    if (this.currentAmmo <= 0) {
+      this.startReload();
+    }
   }
   
   private playShotSound(): void {
@@ -218,8 +340,30 @@ export class AK47 {
     this.walkTime = walkTime;
     this.breathTime = breathTime;
     
+    // Handle reload animation
+    if (this.isReloading) {
+      this.reloadTime += delta;
+      
+      // Animate magazine dropping and coming back
+      const reloadProgress = this.reloadTime / this.RELOAD_DURATION;
+      if (reloadProgress < 0.4) {
+        // Magazine drops down
+        this.magazineOffset = reloadProgress * 3;
+      } else if (reloadProgress < 0.6) {
+        // Magazine at bottom
+        this.magazineOffset = 1.2;
+      } else if (reloadProgress < 1.0) {
+        // Magazine comes back up
+        this.magazineOffset = 1.2 - (reloadProgress - 0.6) * 6;
+      }
+      
+      if (this.reloadTime >= this.RELOAD_DURATION) {
+        this.completeReload();
+      }
+    }
+    
     // Auto fire when mouse is held down
-    if (this.isMouseDown) {
+    if (this.isMouseDown && !this.isReloading) {
       const currentTime = performance.now() / 1000;
       if (currentTime - this.lastShotTime >= this.FIRE_RATE) {
         this.lastShotTime = currentTime;
@@ -270,9 +414,18 @@ export class AK47 {
     this.weaponGroup.rotateX(this.BASE_ROTATION.x + recoilRotX);
     this.weaponGroup.rotateY(this.BASE_ROTATION.y + bobX * 0.01);
     this.weaponGroup.rotateZ(this.BASE_ROTATION.z + recoilRotZ);
+    
+    // Animate magazine position during reload
+    if (this.magazine && this.isReloading) {
+      this.magazine.position.y = -9 + this.magazineOffset;
+    }
   }
 
   public getGroup(): THREE.Group {
     return this.weaponGroup;
+  }
+  
+  public isReloadingNow(): boolean {
+    return this.isReloading;
   }
 }
