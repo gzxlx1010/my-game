@@ -91,6 +91,9 @@ class Game {
     // Update FPS controller
     this.fpsController.update(delta, this.dust2Map.colliders);
     
+    // Update skybox position to follow camera
+    this.dust2Map.updateSky(this.camera.position);
+    
     // Update weapon with animation times
     const walkTime = this.fpsController.walkTime;
     const breathTime = this.fpsController.breathTime;

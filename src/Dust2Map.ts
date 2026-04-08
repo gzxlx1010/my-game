@@ -3,6 +3,7 @@ import * as THREE from 'three';
 export class Dust2Map {
   private scene: THREE.Scene;
   public colliders: THREE.Mesh[] = [];
+  public sky: THREE.Mesh | null = null;
   
   private wallMaterial!: THREE.MeshStandardMaterial;
   private sandMaterial!: THREE.MeshStandardMaterial;
@@ -368,10 +369,15 @@ export class Dust2Map {
         }
       `,
       side: THREE.BackSide,
-      depthWrite: false,
-      fog: false
+      depthWrite: false
     });
-    const sky = new THREE.Mesh(skyGeo, skyMat);
-    this.scene.add(sky);
+    this.sky = new THREE.Mesh(skyGeo, skyMat);
+    this.scene.add(this.sky);
+  }
+  
+  public updateSky(cameraPosition: THREE.Vector3): void {
+    if (this.sky) {
+      this.sky.position.copy(cameraPosition);
+    }
   }
 }
