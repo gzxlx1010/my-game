@@ -118,18 +118,24 @@ export class Dust2Map {
     ceiling.receiveShadow = true;
     this.scene.add(ceiling);
 
-    // Tunnel walls - 贴合墙壁模型的碰撞体
-    const wallGeo1 = new THREE.BoxGeometry(12, height + 20, depth + 10); // 稍大的碰撞体贴合墙壁
+    // Tunnel walls - 碰撞体与视觉墙壁完全贴合
+    // 墙壁位于隧道两侧边缘
+    const wallThickness = 10;
+    const wallHeight = height;
+    
+    // 左侧墙壁 - 紧贴隧道边缘
+    const wallGeo1 = new THREE.BoxGeometry(wallThickness, wallHeight, depth);
     const wall1 = new THREE.Mesh(wallGeo1, this.wallMaterial);
-    wall1.position.set(x - width/2 + 6, y + height/2, z);
+    wall1.position.set(x - width/2 + wallThickness/2, y + wallHeight/2, z);
     wall1.castShadow = true;
     wall1.receiveShadow = true;
     this.scene.add(wall1);
     this.colliders.push(wall1);
 
-    const wallGeo2 = new THREE.BoxGeometry(12, height + 20, depth + 10);
+    // 右侧墙壁 - 紧贴隧道边缘
+    const wallGeo2 = new THREE.BoxGeometry(wallThickness, wallHeight, depth);
     const wall2 = new THREE.Mesh(wallGeo2, this.wallMaterial);
-    wall2.position.set(x + width/2 - 6, y + height/2, z);
+    wall2.position.set(x + width/2 - wallThickness/2, y + wallHeight/2, z);
     wall2.castShadow = true;
     wall2.receiveShadow = true;
     this.scene.add(wall2);
