@@ -151,7 +151,7 @@ export class Enemy {
         visible: false
       })
     );
-    mesh.position.set(x, 17.5, z); // 碰撞体中心在地平面以上17.5单位
+    mesh.position.set(x, 0, z); // 碰撞体底部在地平面y=0
     mesh.castShadow = true;
     mesh.userData.isEnemy = true;
     mesh.userData.enemyGroup = enemyGroup;
@@ -160,7 +160,7 @@ export class Enemy {
     return {
       mesh,
       visualGroup: enemyGroup,
-      position: new THREE.Vector3(x, 17.5, z),
+      position: new THREE.Vector3(x, 0, z),
       speed: 30 + Math.random() * 20,
       health: 100,
       maxHealth: 100,
