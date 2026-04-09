@@ -227,8 +227,9 @@ export class DecalSystem {
     // 设置位置 - 紧贴表面
     mesh.position.copy(position);
     
-    // 让贴花朝向玩家（始终面向相机）
-    mesh.lookAt(this.scene.userData.cameraPosition || position.clone().add(new THREE.Vector3(0, 0, 10)));
+    // 让贴花朝向物体表面法线方向（这样从任何角度看都是平的）
+    // 先让平面朝向法线方向，然后旋转90度让正面朝外
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
     
     // 调试：使用纯色材质测试
     const testMaterial = new THREE.MeshBasicMaterial({ 
