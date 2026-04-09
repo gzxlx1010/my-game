@@ -122,7 +122,7 @@ class Game {
     // 初始化医疗包
     this.medkit = new Medkit(this.scene);
     this.medkit.setColliders(this.dust2Map.colliders);
-    this.medkit.spawnMedkits(3);
+    this.medkit.spawnMedkits(5);
     
     // 初始化贴花系统
     this.decalSystem = new DecalSystem(this.scene);

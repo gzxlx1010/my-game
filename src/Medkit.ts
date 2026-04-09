@@ -12,8 +12,8 @@ export class Medkit {
   private medkits: MedkitData[] = [];
   private colliders: THREE.Mesh[] = [];
   
-  private readonly MAX_MEDKITS = 3;
-  private readonly INTERACTION_RANGE = 30;
+  private readonly MAX_MEDKITS = 5;
+  private readonly INTERACTION_RANGE = 50; // 增加交互范围
   private readonly RESPAWN_TIME = 30; // 30秒后重生
   private readonly SPAWN_POINTS = [
     { x: -280, z: -240 },  // A site

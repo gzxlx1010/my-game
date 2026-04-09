@@ -143,10 +143,15 @@ export class Enemy {
     mesh.userData.enemyGroup = enemyGroup;
     mesh.add(enemyGroup);
     
+    // 设置visualGroup位置 - 让脚底在地平面y=0
+    // body底部在relative y=0.5, head顶部在relative y=34, legs底部在relative y=-10
+    // 要让legs底部接触地面(y=0)，visualGroup需要向上偏移10
+    enemyGroup.position.set(0, 10, 0);
+    
     return {
       mesh,
       visualGroup: enemyGroup,
-      position: new THREE.Vector3(x, 5, z), // y=5让脚底在地平面上
+      position: new THREE.Vector3(x, 17.5, z), // y=17.5是碰撞体中心
       speed: 30 + Math.random() * 20,
       health: 100,
       maxHealth: 100,

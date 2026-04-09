@@ -539,7 +539,7 @@ export class FPSController {
     // 检查与目标距离
     if (this.healingTarget) {
       const dist = this.position.distanceTo(this.healingTarget);
-      if (dist > 30) { // 超出交互范围
+      if (dist > 50) { // 超出交互范围
         this.cancelHealing();
         return;
       }
