@@ -867,13 +867,18 @@ class Game {
 }
 
 const game = new Game();
+console.log("[Game] Game instance created");
 
 const startScreen = document.getElementById('start-screen');
 const startBtn = document.getElementById('start-btn');
+console.log("[Game] Start screen elements:", startScreen, startBtn);
 
 if (startBtn && startScreen) {
   startBtn.addEventListener('click', () => {
+    console.log("[Game] Start button clicked, calling game.start()");
     startScreen.classList.add('hidden');
     game.start();
   });
+} else {
+  console.error("[Game] Start screen or button not found");
 }
