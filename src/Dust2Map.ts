@@ -110,14 +110,14 @@ export class Dust2Map {
     this.scene.add(floor);
     this.colliders.push(floor);
 
-    // Tunnel ceiling
+    // Tunnel ceiling (visual only, not a collider)
     const ceilingGeo = new THREE.BoxGeometry(width, 10, depth);
     const ceiling = new THREE.Mesh(ceilingGeo, this.wallMaterial);
     ceiling.position.set(x, y + height - 5, z);
     ceiling.castShadow = true;
     ceiling.receiveShadow = true;
     this.scene.add(ceiling);
-    this.colliders.push(ceiling);
+    // 不添加到碰撞器，天花板不需要碰撞检测
 
     // Tunnel walls
     const wallGeo1 = new THREE.BoxGeometry(10, height, depth);

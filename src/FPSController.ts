@@ -19,10 +19,10 @@ export class FPSController {
   
   private readonly MOVE_SPEED = 280;
   private readonly SPRINT_SPEED = 500;
-  private readonly JUMP_FORCE = 45;
-  private readonly GRAVITY = 120;
+  private readonly JUMP_FORCE = 80;  // 增加跳跃力以便进入建筑物
+  private readonly GRAVITY = 100;
   private readonly PLAYER_HEIGHT = 35;
-  private readonly PLAYER_RADIUS = 8;
+  private readonly PLAYER_RADIUS = 5; // 减小碰撞半径
   
   private velocityY = 0;
   private isOnGround = true;
