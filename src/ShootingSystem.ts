@@ -82,6 +82,8 @@ export class ShootingSystem {
       // 检测敌人
       const enemyHits = this.raycaster.intersectObjects(targets, true);
       
+      let hitEnemy = false;
+      
       if (enemyHits.length > 0) {
         const hit = enemyHits[0];
         
@@ -97,9 +99,29 @@ export class ShootingSystem {
             hit: true,
             point: hit.point.clone(),
             enemy: actualEnemy,
-            distance: hit.distance
+            distance: hit.distance,
+            wallHit: false
           });
+          hitEnemy = true;
         }
+      }
+      
+      // 如果没有命中敌人但命中了墙壁
+      if (!hitEnemy && wallHits.length > 0 && wallHits[0].distance < Infinity) {
+        const wallHit = wallHits[0];
+        let normal = new THREE.Vector3(0, 1, 0);
+        if (wallHit.face) {
+          normal = wallHit.face.normal.clone();
+          normal.transformDirection(wallHit.object.matrixWorld);
+        }
+        hits.push({
+          hit: true,
+          point: wallHit.point.clone(),
+          enemy: null,
+          distance: wallHit.distance,
+          wallHit: true,
+          wallNormal: normal
+        });
       }
     }
     
@@ -139,13 +161,20 @@ export class ShootingSystem {
     // 检查是否命中墙壁
     if (wallHits.length > 0) {
       const wallHit = wallHits[0];
+      // 转换法线到世界坐标系
+      let normal = new THREE.Vector3(0, 1, 0);
+      if (wallHit.face) {
+        normal = wallHit.face.normal.clone();
+        normal.transformDirection(wallHit.object.matrixWorld);
+      }
+      console.log('Wall hit at', wallHit.point.x, wallHit.point.y, wallHit.point.z, 'normal:', normal.x, normal.y, normal.z);
       return {
         hit: true,
         point: wallHit.point.clone(),
         enemy: null,
         distance: wallHit.distance,
         wallHit: true,
-        wallNormal: wallHit.face ? wallHit.face.normal.clone() : new THREE.Vector3(0, 1, 0)
+        wallNormal: normal
       };
     }
     

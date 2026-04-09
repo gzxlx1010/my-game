@@ -182,8 +182,11 @@ export class DecalSystem {
     normal: THREE.Vector3,
     type: DecalType = 'bullet'
   ): void {
+    console.log('Adding decal at', position.x, position.y, position.z, 'type:', type);
+    
     // 检查是否超过最大数量
     if (this.size >= this.MAX_DECALS) {
+      console.log('Max decals reached, removing oldest');
       this.removeOldestDecal();
     }
     
@@ -194,42 +197,54 @@ export class DecalSystem {
     switch (type) {
       case 'knife':
         texture = this.knifeTexture!;
-        size = 15;
+        size = 20;
         break;
       case 'shotgun':
         texture = this.shotgunTexture!;
-        size = 25;
+        size = 30;
         break;
       default:
         texture = this.bulletTexture!;
-        size = 8;
+        size = 12;
     }
     
-    // 创建贴花几何体
-    const geometry = new THREE.PlaneGeometry(size, size);
+    // 创建贴花几何体 - 使用圆形平面
+    const geometry = new THREE.CircleGeometry(size, 16);
     
-    // 创建材质
+    // 创建材质 - 确保正确显示
     const material = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
-      opacity: 1,
+      opacity: 1.0,
+      depthTest: true,
       depthWrite: false,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
+      side: THREE.DoubleSide
     });
     
     // 创建贴花网格
     const mesh = new THREE.Mesh(geometry, material);
     
-    // 设置位置和朝向
+    // 设置位置 - 紧贴表面
     mesh.position.copy(position);
-    mesh.position.add(normal.clone().multiplyScalar(0.1)); // 稍微偏移避免Z-fighting
     
-    // 让贴花朝向物体表面
-    mesh.lookAt(position.clone().add(normal));
+    // 让贴花朝向玩家（始终面向相机）
+    mesh.lookAt(this.scene.userData.cameraPosition || position.clone().add(new THREE.Vector3(0, 0, 10)));
+    
+    // 调试：使用纯色材质测试
+    const testMaterial = new THREE.MeshBasicMaterial({ 
+      color: type === 'bullet' ? 0xff0000 : (type === 'knife' ? 0x00ff00 : 0x0000ff), 
+      transparent: true, 
+      opacity: 0.9, 
+      side: THREE.DoubleSide 
+    });
+    // mesh.material = testMaterial; // 取消注释可以测试贴花是否创建
+    
+    // 调试：使用纯色材质测试
+    // mesh.material = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
     
     // 添加到场景
     this.scene.add(mesh);
+    console.log('Decal mesh added to scene, position:', mesh.position);
     
     // 创建贴花数据
     const now = performance.now() / 1000;
@@ -251,6 +266,7 @@ export class DecalSystem {
     }
     
     this.size++;
+    console.log('Decal count:', this.size);
   }
   
   // 移除最旧的贴花
