@@ -225,21 +225,24 @@ export class FPSController {
     const moveX = right.x * this.velocity.x * delta + forward.x * this.velocity.z * delta;
     const moveZ = right.z * this.velocity.x * delta + forward.z * this.velocity.z * delta;
     
-    // Simple collision detection
+    // Simple collision detection - only check near feet
+    const feetY = this.position.y - this.PLAYER_HEIGHT;
+    const feetTestHeight = 4; // 只测试脚底附近的高度范围
     let canMoveX = true;
     let canMoveZ = true;
     
     for (const collider of colliders) {
       const box = new THREE.Box3().setFromObject(collider);
       
+      // 只测试脚底附近的碰撞体
       const testBoxX = new THREE.Box3(
-        new THREE.Vector3(this.position.x + moveX - this.PLAYER_RADIUS, this.position.y - this.PLAYER_HEIGHT, this.position.z - this.PLAYER_RADIUS),
-        new THREE.Vector3(this.position.x + moveX + this.PLAYER_RADIUS, this.position.y, this.position.z + this.PLAYER_RADIUS)
+        new THREE.Vector3(this.position.x + moveX - this.PLAYER_RADIUS, feetY, this.position.z - this.PLAYER_RADIUS),
+        new THREE.Vector3(this.position.x + moveX + this.PLAYER_RADIUS, feetY + feetTestHeight, this.position.z + this.PLAYER_RADIUS)
       );
       
       const testBoxZ = new THREE.Box3(
-        new THREE.Vector3(this.position.x - this.PLAYER_RADIUS, this.position.y - this.PLAYER_HEIGHT, this.position.z + moveZ - this.PLAYER_RADIUS),
-        new THREE.Vector3(this.position.x + this.PLAYER_RADIUS, this.position.y, this.position.z + moveZ + this.PLAYER_RADIUS)
+        new THREE.Vector3(this.position.x - this.PLAYER_RADIUS, feetY, this.position.z + moveZ - this.PLAYER_RADIUS),
+        new THREE.Vector3(this.position.x + this.PLAYER_RADIUS, feetY + feetTestHeight, this.position.z + moveZ + this.PLAYER_RADIUS)
       );
       
       if (testBoxX.intersectsBox(box)) {

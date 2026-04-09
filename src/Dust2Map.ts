@@ -101,7 +101,7 @@ export class Dust2Map {
   }
 
   private createTunnel(x: number, y: number, z: number, width: number, height: number, depth: number): void {
-    // Tunnel floor
+    // Tunnel floor (collision)
     const floorGeo = new THREE.BoxGeometry(width, 10, depth);
     const floor = new THREE.Mesh(floorGeo, this.wallMaterial);
     floor.position.set(x, y + 5, z);
@@ -110,23 +110,22 @@ export class Dust2Map {
     this.scene.add(floor);
     this.colliders.push(floor);
 
-    // Tunnel ceiling (visual only, not a collider)
+    // Tunnel ceiling (visual only, no collision)
     const ceilingGeo = new THREE.BoxGeometry(width, 10, depth);
     const ceiling = new THREE.Mesh(ceilingGeo, this.wallMaterial);
     ceiling.position.set(x, y + height - 5, z);
     ceiling.castShadow = true;
     ceiling.receiveShadow = true;
     this.scene.add(ceiling);
-    // 不添加到碰撞器，天花板不需要碰撞检测
 
-    // Tunnel walls
+    // Tunnel walls (visual only, no collision - tunnel is open)
     const wallGeo1 = new THREE.BoxGeometry(10, height, depth);
     const wall1 = new THREE.Mesh(wallGeo1, this.wallMaterial);
     wall1.position.set(x - width/2 + 5, y + height/2, z);
     wall1.castShadow = true;
     wall1.receiveShadow = true;
     this.scene.add(wall1);
-    this.colliders.push(wall1);
+    // 不添加侧墙到碰撞器
 
     const wallGeo2 = new THREE.BoxGeometry(10, height, depth);
     const wall2 = new THREE.Mesh(wallGeo2, this.wallMaterial);
@@ -134,7 +133,7 @@ export class Dust2Map {
     wall2.castShadow = true;
     wall2.receiveShadow = true;
     this.scene.add(wall2);
-    this.colliders.push(wall2);
+    // 不添加侧墙到碰撞器
   }
 
   private createBombsites(): void {
