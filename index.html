@@ -7,12 +7,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="/my-game/assets/index-9_DceFzE.js"></script>
-    <link rel="stylesheet" crossorigin href="/my-game/assets/index-hs7mCK2g.css">
+    <link rel="stylesheet" href="/src/style.css" />
   </head>
   <body>
     <div id="game-container"></div>
     <div id="vignette"></div>
+    
+    <!-- 血屏效果 -->
+    <div id="blood-screen">
+      <div class="blood-corner top-left"></div>
+      <div class="blood-corner top-right"></div>
+      <div class="blood-corner bottom-left"></div>
+      <div class="blood-corner bottom-right"></div>
+      <div class="blood-vignette"></div>
+    </div>
+    
+    <!-- 精致血条UI -->
+    <div id="health-bar-container">
+      <div class="health-bar-wrapper">
+        <div class="health-bar-bg">
+          <div class="health-bar-fill" id="health-fill">
+            <div class="health-bar-shine"></div>
+            <div class="health-bar-segments"></div>
+          </div>
+          <div class="health-bar-damage" id="health-damage"></div>
+        </div>
+        <div class="health-icon">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
+        </div>
+        <div class="health-text" id="health-text">100</div>
+      </div>
+      <div class="health-status" id="health-status">FULL HEALTH</div>
+    </div>
     
     <div id="crosshair">
       <div class="crosshair-line horizontal left"></div>
@@ -46,5 +74,15 @@
         <button id="start-btn">Click to Play</button>
       </div>
     </div>
+    
+    <!-- 死亡屏幕 -->
+    <div id="death-screen">
+      <div class="death-content">
+        <h1>YOU DIED</h1>
+        <p class="death-subtitle">You have been eliminated</p>
+        <button id="respawn-btn">Respawn</button>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

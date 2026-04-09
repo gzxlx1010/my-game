@@ -1,0 +1,485 @@
+import * as THREE from 'three';
+
+export class FPSController {
+  public camera: THREE.PerspectiveCamera;
+  public position: THREE.Vector3;
+  
+  private euler: THREE.Euler;
+  private velocity: THREE.Vector3;
+  private direction: THREE.Vector3;
+  
+  private moveForward = false;
+  private moveBackward = false;
+  private moveLeft = false;
+  private moveRight = false;
+  private sprint = false;
+  private canJump = true;
+  
+  private isLocked = false;
+  
+  private readonly MOVE_SPEED = 280;
+  private readonly SPRINT_SPEED = 500;
+  private readonly JUMP_FORCE = 45;
+  private readonly GRAVITY = 120;
+  private readonly PLAYER_HEIGHT = 35;
+  private readonly PLAYER_RADIUS = 8;
+  
+  private velocityY = 0;
+  private isOnGround = true;
+  
+  // Walking simulation
+  public walkTime = 0;
+  private isWalking = false;
+  private readonly STEP_INTERVAL = 0.5; // Steps per second
+  
+  // Breathing simulation
+  public breathTime = 0;
+  private breathSpeed = 0.8;
+  private baseFOV = 75;
+  private targetFOV = 75;
+  private readonly BREATH_INTENSITY = 1.5;
+  
+  // Head bob
+  private headBobTime = 0;
+  private readonly HEAD_BOB_AMOUNT_Y = 0.08;
+  private readonly HEAD_BOB_AMOUNT_X = 0.04;
+  private readonly HEAD_BOB_SPEED = 12;
+  
+  // Landing effect
+  private landingBob = 0;
+  
+  // Camera smoothing
+  private targetEulerX = 0;
+  private targetEulerY = 0;
+  
+  // Recoil system
+  private recoilOffset = 0;
+  private recoilRecovery = 0;
+  private readonly RECOIL_KICK = 0.08;  // Initial kick strength
+  private readonly RECOIL_RECOVERY_SPEED = 8;  // Recovery speed (higher = faster)
+  
+  // Screen shake
+  private shakeOffset = new THREE.Vector3();
+  private shakeIntensity = 0;
+  private shakeDecay = 10;
+  
+  // Player health system
+  private health = 100;
+  private maxHealth = 100;
+  private isDead = false;
+  private invulnerableTime = 0;
+  private readonly INVULNERABLE_DURATION = 0.5; // 无敌时间（秒）
+  
+  // Event callbacks
+  public onDamageTaken: ((health: number, maxHealth: number) => void) | null = null;
+  public onDeath: (() => void) | null = null;
+  
+  // Footstep sound
+  private lastFootstep = 0;
+
+  constructor(camera: THREE.PerspectiveCamera, startPosition: THREE.Vector3) {
+    this.camera = camera;
+    this.position = startPosition.clone();
+    this.camera.position.copy(this.position);
+    
+    this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
+    this.velocity = new THREE.Vector3();
+    this.direction = new THREE.Vector3();
+    this.baseFOV = camera.fov;
+    
+    this.setupControls();
+  }
+
+  private setupControls(): void {
+    document.addEventListener('keydown', (e) => this.onKeyDown(e));
+    document.addEventListener('keyup', (e) => this.onKeyUp(e));
+    document.addEventListener('click', () => this.requestPointerLock());
+    document.addEventListener('mousemove', (e) => this.onMouseMove(e));
+    
+    document.addEventListener('pointerlockchange', () => {
+      this.isLocked = document.pointerLockElement !== null;
+    });
+  }
+
+  private requestPointerLock(): void {
+    if (!this.isLocked) {
+      document.body.requestPointerLock();
+    }
+  }
+
+  private onKeyDown(event: KeyboardEvent): void {
+    switch (event.code) {
+      case 'KeyW':
+      case 'ArrowUp':
+        this.moveForward = true;
+        break;
+      case 'KeyS':
+      case 'ArrowDown':
+        this.moveBackward = true;
+        break;
+      case 'KeyA':
+      case 'ArrowLeft':
+        this.moveLeft = true;
+        break;
+      case 'KeyD':
+      case 'ArrowRight':
+        this.moveRight = true;
+        break;
+      case 'Space':
+        if (this.canJump && this.isOnGround) {
+          this.velocityY = this.JUMP_FORCE;
+          this.isOnGround = false;
+          this.landingBob = 0;
+        }
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.sprint = true;
+        break;
+    }
+  }
+
+  private onKeyUp(event: KeyboardEvent): void {
+    switch (event.code) {
+      case 'KeyW':
+      case 'ArrowUp':
+        this.moveForward = false;
+        break;
+      case 'KeyS':
+      case 'ArrowDown':
+        this.moveBackward = false;
+        break;
+      case 'KeyA':
+      case 'ArrowLeft':
+        this.moveLeft = false;
+        break;
+      case 'KeyD':
+      case 'ArrowRight':
+        this.moveRight = false;
+        break;
+      case 'ShiftLeft':
+      case 'ShiftRight':
+        this.sprint = false;
+        break;
+    }
+  }
+
+  private onMouseMove(event: MouseEvent): void {
+    if (!this.isLocked) return;
+    
+    const sensitivity = 0.002;
+    this.targetEulerY -= event.movementX * sensitivity;
+    this.targetEulerX -= event.movementY * sensitivity;
+    this.targetEulerX = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.targetEulerX));
+  }
+
+  public update(delta: number, colliders: THREE.Mesh[]): void {
+    if (!this.isLocked) return;
+    
+    // Update walking state
+    this.isWalking = (this.moveForward || this.moveBackward || this.moveLeft || this.moveRight) && this.isOnGround;
+    
+    // Apply friction
+    const friction = this.isWalking ? 8.0 : 10.0;
+    this.velocity.x *= (1 - friction * delta);
+    this.velocity.z *= (1 - friction * delta);
+    
+    // Apply gravity
+    this.velocityY -= this.GRAVITY * delta;
+    
+    // Direction
+    this.direction.z = Number(this.moveForward) - Number(this.moveBackward);
+    this.direction.x = Number(this.moveRight) - Number(this.moveLeft);
+    this.direction.normalize();
+    
+    // Movement speed - sprint when holding shift
+    const currentSpeed = this.sprint ? this.SPRINT_SPEED : this.MOVE_SPEED;
+    const accel = this.isWalking ? currentSpeed : currentSpeed * 0.5;
+    if (this.moveForward || this.moveBackward) {
+      this.velocity.z += this.direction.z * accel * delta;
+    }
+    if (this.moveLeft || this.moveRight) {
+      this.velocity.x += this.direction.x * accel * delta;
+    }
+    
+    // Apply velocity to position
+    const forward = new THREE.Vector3();
+    this.camera.getWorldDirection(forward);
+    forward.y = 0;
+    forward.normalize();
+    
+    const right = new THREE.Vector3();
+    right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+    
+    const moveX = right.x * this.velocity.x * delta + forward.x * this.velocity.z * delta;
+    const moveZ = right.z * this.velocity.x * delta + forward.z * this.velocity.z * delta;
+    
+    // Simple collision detection
+    let canMoveX = true;
+    let canMoveZ = true;
+    
+    for (const collider of colliders) {
+      const box = new THREE.Box3().setFromObject(collider);
+      
+      const testBoxX = new THREE.Box3(
+        new THREE.Vector3(this.position.x + moveX - this.PLAYER_RADIUS, this.position.y - this.PLAYER_HEIGHT, this.position.z - this.PLAYER_RADIUS),
+        new THREE.Vector3(this.position.x + moveX + this.PLAYER_RADIUS, this.position.y, this.position.z + this.PLAYER_RADIUS)
+      );
+      
+      const testBoxZ = new THREE.Box3(
+        new THREE.Vector3(this.position.x - this.PLAYER_RADIUS, this.position.y - this.PLAYER_HEIGHT, this.position.z + moveZ - this.PLAYER_RADIUS),
+        new THREE.Vector3(this.position.x + this.PLAYER_RADIUS, this.position.y, this.position.z + moveZ + this.PLAYER_RADIUS)
+      );
+      
+      if (testBoxX.intersectsBox(box)) {
+        canMoveX = false;
+      }
+      if (testBoxZ.intersectsBox(box)) {
+        canMoveZ = false;
+      }
+    }
+    
+    if (canMoveX) this.position.x += moveX;
+    if (canMoveZ) this.position.z += moveZ;
+    
+    // Vertical movement
+    this.position.y += this.velocityY * delta;
+    
+    // Ground check
+    const groundY = this.getGroundHeight(this.position.x, this.position.z, colliders);
+    if (this.position.y < groundY + this.PLAYER_HEIGHT) {
+      // Landing effect
+      if (!this.isOnGround && this.velocityY < -5) {
+        this.landingBob = Math.min(Math.abs(this.velocityY) * 0.1, 0.3);
+      }
+      
+      this.position.y = groundY + this.PLAYER_HEIGHT;
+      this.velocityY = 0;
+      this.isOnGround = true;
+      this.canJump = true;
+    }
+    
+    // Update camera position
+    this.camera.position.copy(this.position);
+    
+    // Smooth camera rotation
+    // Apply recoil: kick camera down (negative X), then recover
+    this.recoilRecovery += delta * this.RECOIL_RECOVERY_SPEED;
+    this.recoilOffset *= Math.pow(0.1, delta * this.RECOIL_RECOVERY_SPEED); // Fast exponential decay
+    
+    const effectiveRecoil = Math.max(0, this.recoilOffset);
+    this.euler.x += (this.targetEulerX + effectiveRecoil - this.euler.x) * 0.15;
+    this.euler.y += (this.targetEulerY - this.euler.y) * 0.15;
+    this.camera.quaternion.setFromEuler(this.euler);
+    
+    // 更新屏幕抖动
+    if (this.shakeIntensity > 0) {
+      this.shakeOffset.set(
+        (Math.random() - 0.5) * this.shakeIntensity,
+        (Math.random() - 0.5) * this.shakeIntensity,
+        0
+      );
+      this.shakeIntensity -= this.shakeDecay * delta;
+      if (this.shakeIntensity < 0) this.shakeIntensity = 0;
+    } else {
+      this.shakeOffset.set(0, 0, 0);
+    }
+    
+    // 应用抖动到相机位置
+    this.camera.position.add(this.shakeOffset);
+    
+    // Update head bob and breathing
+    this.updateHeadBob(delta);
+    this.updateBreathing(delta);
+    this.updateFootsteps(delta);
+  }
+
+  private updateHeadBob(delta: number): void {
+    // Landing bob recovery
+    this.landingBob *= 0.9;
+    
+    // Walking head bob
+    if (this.isWalking) {
+      this.headBobTime += delta * this.HEAD_BOB_SPEED;
+      this.walkTime += delta;
+    } else {
+      // Smoothly return to center
+      this.headBobTime *= 0.95;
+    }
+    
+    // Calculate bob offsets
+    const bobX = Math.sin(this.headBobTime) * this.HEAD_BOB_AMOUNT_X;
+    const bobY = Math.abs(Math.cos(this.headBobTime)) * this.HEAD_BOB_AMOUNT_Y;
+    
+    // Apply to camera
+    this.camera.position.x += bobX;
+    this.camera.position.y += bobY + this.landingBob;
+  }
+
+  private updateBreathing(delta: number): void {
+    this.breathTime += delta * this.breathSpeed;
+    
+    // Breathing intensity based on movement
+    const intensity = this.isWalking ? this.BREATH_INTENSITY * 1.5 : this.BREATH_INTENSITY;
+    
+    // Breathing FOV effect
+    this.targetFOV = this.baseFOV + Math.sin(this.breathTime * 2) * intensity * 0.3;
+    
+    // Smooth FOV transition
+    this.camera.fov += (this.targetFOV - this.camera.fov) * 0.05;
+    this.camera.updateProjectionMatrix();
+    
+    // Subtle camera rotation from breathing
+    const breathRotX = Math.sin(this.breathTime) * 0.003 * intensity;
+    const breathRotY = Math.cos(this.breathTime * 0.7) * 0.002 * intensity;
+    
+    this.euler.x += breathRotX;
+    this.euler.y += breathRotY;
+  }
+
+  private updateFootsteps(delta: number): void {
+    if (!this.isWalking) {
+      this.lastFootstep = 0;
+      return;
+    }
+    
+    this.lastFootstep += delta;
+    
+    // Footstep interval (slightly faster when running)
+    const interval = this.STEP_INTERVAL * 0.8;
+    
+    if (this.lastFootstep >= interval) {
+      this.lastFootstep = 0;
+      this.playFootstep();
+    }
+  }
+
+  private playFootstep(): void {
+    // Create footstep sound using Web Audio API
+    try {
+      const audioCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(80 + Math.random() * 40, audioCtx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+      
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+      
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.15);
+    } catch {
+      // Audio not supported or blocked
+    }
+  }
+
+  private getGroundHeight(x: number, z: number, colliders: THREE.Mesh[]): number {
+    let maxY = -Infinity;
+    
+    for (const collider of colliders) {
+      const box = new THREE.Box3().setFromObject(collider);
+      if (x >= box.min.x && x <= box.max.x && z >= box.min.z && z <= box.max.z) {
+        if (box.max.y > maxY && box.max.y < this.position.y + 5) {
+          maxY = box.max.y;
+        }
+      }
+    }
+    
+    return maxY === -Infinity ? 0 : maxY;
+  }
+
+  public getPosition(): THREE.Vector3 {
+    return this.position.clone();
+  }
+  
+  public isMoving(): boolean {
+    return this.isWalking;
+  }
+  
+  public isSprinting(): boolean {
+    return this.sprint && this.isWalking;
+  }
+  
+  // Trigger recoil - call this when weapon fires
+  public triggerRecoil(): void {
+    this.recoilOffset = this.RECOIL_KICK;
+    this.recoilRecovery = 0;
+  }
+  
+  // Get current recoil offset for external effects
+  public getRecoilOffset(): number {
+    return this.recoilOffset;
+  }
+  
+  // 屏幕抖动触发
+  public triggerShake(intensity: number = 0.5): void {
+    this.shakeIntensity = intensity;
+  }
+  
+  // 获取当前抖动偏移
+  public getShakeOffset(): THREE.Vector3 {
+    return this.shakeOffset;
+  }
+  
+  // 获取血量
+  public getHealth(): number {
+    return this.health;
+  }
+  
+  // 获取最大血量
+  public getMaxHealth(): number {
+    return this.maxHealth;
+  }
+  
+  // 是否死亡
+  public isPlayerDead(): boolean {
+    return this.isDead;
+  }
+  
+  // 受到伤害
+  public takeDamage(amount: number): void {
+    if (this.isDead) return;
+    
+    // 无敌时间检查
+    const currentTime = performance.now() / 1000;
+    if (this.invulnerableTime > currentTime) return;
+    
+    this.health = Math.max(0, this.health - amount);
+    this.invulnerableTime = currentTime + this.INVULNERABLE_DURATION;
+    
+    // 触发抖动
+    this.triggerShake(0.3);
+    
+    // 触发伤害回调
+    if (this.onDamageTaken) {
+      this.onDamageTaken(this.health, this.maxHealth);
+    }
+    
+    // 检查死亡
+    if (this.health <= 0) {
+      this.isDead = true;
+      if (this.onDeath) {
+        this.onDeath();
+      }
+    }
+  }
+  
+  // 复活
+  public respawn(position: THREE.Vector3): void {
+    this.health = this.maxHealth;
+    this.isDead = false;
+    this.position.copy(position);
+    this.velocity.set(0, 0, 0);
+    this.velocityY = 0;
+    this.invulnerableTime = 0;
+    
+    if (this.onDamageTaken) {
+      this.onDamageTaken(this.health, this.maxHealth);
+    }
+  }
+}
