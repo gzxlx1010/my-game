@@ -225,36 +225,41 @@ export class FPSController {
     const moveX = right.x * this.velocity.x * delta + forward.x * this.velocity.z * delta;
     const moveZ = right.z * this.velocity.x * delta + forward.z * this.velocity.z * delta;
     
-    // Simple collision detection - only check near feet
-    const feetY = this.position.y - this.PLAYER_HEIGHT;
-    const feetTestHeight = 4; // 只测试脚底附近的高度范围
-    let canMoveX = true;
-    let canMoveZ = true;
+    // 简化碰撞检测 - 只在X和Z方向分别检测
+    let newMoveX = moveX;
+    let newMoveZ = moveZ;
+    const nextX = this.position.x + moveX;
+    const nextZ = this.position.z + moveZ;
     
     for (const collider of colliders) {
       const box = new THREE.Box3().setFromObject(collider);
       
-      // 只测试脚底附近的碰撞体
-      const testBoxX = new THREE.Box3(
-        new THREE.Vector3(this.position.x + moveX - this.PLAYER_RADIUS, feetY, this.position.z - this.PLAYER_RADIUS),
-        new THREE.Vector3(this.position.x + moveX + this.PLAYER_RADIUS, feetY + feetTestHeight, this.position.z + this.PLAYER_RADIUS)
-      );
-      
-      const testBoxZ = new THREE.Box3(
-        new THREE.Vector3(this.position.x - this.PLAYER_RADIUS, feetY, this.position.z + moveZ - this.PLAYER_RADIUS),
-        new THREE.Vector3(this.position.x + this.PLAYER_RADIUS, feetY + feetTestHeight, this.position.z + moveZ + this.PLAYER_RADIUS)
-      );
-      
-      if (testBoxX.intersectsBox(box)) {
-        canMoveX = false;
+      // 检测X方向移动
+      if (newMoveX !== 0) {
+        const testBoxX = new THREE.Box3(
+          new THREE.Vector3(nextX - this.PLAYER_RADIUS, this.position.y - this.PLAYER_HEIGHT, this.position.z - this.PLAYER_RADIUS),
+          new THREE.Vector3(nextX + this.PLAYER_RADIUS, this.position.y, this.position.z + this.PLAYER_RADIUS)
+        );
+        if (testBoxX.intersectsBox(box)) {
+          newMoveX = 0;
+        }
       }
-      if (testBoxZ.intersectsBox(box)) {
-        canMoveZ = false;
+      
+      // 检测Z方向移动
+      if (newMoveZ !== 0) {
+        const testBoxZ = new THREE.Box3(
+          new THREE.Vector3(nextX - this.PLAYER_RADIUS, this.position.y - this.PLAYER_HEIGHT, nextZ - this.PLAYER_RADIUS),
+          new THREE.Vector3(nextX + this.PLAYER_RADIUS, this.position.y, nextZ + this.PLAYER_RADIUS)
+        );
+        if (testBoxZ.intersectsBox(box)) {
+          newMoveZ = 0;
+        }
       }
     }
     
-    if (canMoveX) this.position.x += moveX;
-    if (canMoveZ) this.position.z += moveZ;
+    // 应用移动（如果方向没被阻挡）
+    if (newMoveX !== 0) this.position.x += newMoveX;
+    if (newMoveZ !== 0) this.position.z += newMoveZ;
     
     // Vertical movement
     this.position.y += this.velocityY * delta;
