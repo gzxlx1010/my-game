@@ -175,8 +175,14 @@ export class LevelSystem {
       return false;
     }
     
-    const distance = playerPosition.distanceTo(this.portalPosition);
-    if (distance < 15) { // 入口半径
+    // 使用水平距离（忽略高度差）
+    const dx = playerPosition.x - this.portalPosition.x;
+    const dz = playerPosition.z - this.portalPosition.z;
+    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
+    
+    console.log(`[LevelSystem] Portal distance check: ${horizontalDistance.toFixed(1)} (threshold: 20)`);
+    
+    if (horizontalDistance < 20) { // 入口水平半径
       this.completeLevel();
       return true;
     }
@@ -187,14 +193,15 @@ export class LevelSystem {
   private activatePortal(): void {
     this.isPortalActive = true;
     
-    // 生成入口位置（地图中央附近）
+    // 生成入口位置（玩家初始位置附近，便于找到）
     const config = this.getCurrentLevelConfig();
-    const mapCenter = config.mapSize / 2;
+    const spawnZ = config.mapSize * 0.8; // 与玩家出生点z位置一致
     
+    // 入口生成在玩家出生点前方一定距离
     this.portalPosition = new THREE.Vector3(
-      mapCenter + (Math.random() - 0.5) * 50,
+      (Math.random() - 0.5) * 100,  // x方向随机偏移
       0,
-      mapCenter + (Math.random() - 0.5) * 50
+      spawnZ - 100 - Math.random() * 50  // 在玩家前方
     );
     
     this.createPortal();
@@ -202,7 +209,7 @@ export class LevelSystem {
     // 显示提示
     this.showPortalMessage();
     
-    console.log(`[LevelSystem] Portal activated at ${this.portalPosition.x}, ${this.portalPosition.z}`);
+    console.log(`[LevelSystem] Portal activated at (${this.portalPosition.x.toFixed(0)}, ${this.portalPosition.z.toFixed(0)})`);
   }
   
   private createPortal(): void {
