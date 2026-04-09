@@ -6,6 +6,9 @@ export default defineConfig({
   base: '/my-game/',
   build: {
     outDir: 'dist',
-    emptyOutDir: true
+    emptyOutDir: true,
+    rollupOptions: {
+      input: resolve(__dirname, 'index.html')
+    }
   }
 })

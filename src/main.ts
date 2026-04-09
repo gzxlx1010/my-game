@@ -1,3 +1,4 @@
+import './style.css';
 import * as THREE from 'three';
 import { FPSController } from './FPSController';
 import { Dust2Map } from './Dust2Map';
