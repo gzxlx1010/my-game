@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { LevelConfig } from './LevelSystem';
 
 export interface EnemyData {
   mesh: THREE.Mesh;
@@ -24,6 +25,12 @@ export class Enemy {
   private playerRef: THREE.Vector3 | null = null;
   private onPlayerDamage: ((damage: number) => void) | null = null;
   private audioCtx: AudioContext | null = null;
+  
+  // 关卡配置
+  private levelConfig: LevelConfig | null = null;
+  private baseDamage: number = 15;
+  private baseSpeed: number = 30;
+  private baseHealth: number = 100;
   
   private readonly SPAWN_POINTS = [
     // A site区域 - 远离箱子的开放区域
@@ -64,8 +71,27 @@ export class Enemy {
     this.scene = scene;
   }
 
+  public setLevelConfig(config: LevelConfig): void {
+    this.levelConfig = config;
+    this.baseDamage = Math.round(15 * config.enemyDamage);
+    this.baseSpeed = Math.round(30 * config.enemySpeed);
+    this.baseHealth = Math.round(100 * config.enemyHealth);
+    
+    console.log(`[Enemy] Level ${config.level} config: damage=${this.baseDamage}, speed=${this.baseSpeed}, health=${this.baseHealth}`);
+  }
+
+  public clearEnemies(): void {
+    for (const enemy of this.enemies) {
+      this.scene.remove(enemy.mesh);
+    }
+    this.enemies = [];
+  }
+
   public spawnEnemies(count: number): void {
-    for (let i = 0; i < count && this.enemies.length < this.MAX_ENEMIES; i++) {
+    // 清理现有敌人
+    this.clearEnemies();
+    
+    for (let i = 0; i < count; i++) {
       const spawnPoint = this.SPAWN_POINTS[i % this.SPAWN_POINTS.length];
       const enemy = this.createEnemy(spawnPoint.x, spawnPoint.z);
       this.enemies.push(enemy);
@@ -161,9 +187,9 @@ export class Enemy {
       mesh,
       visualGroup: enemyGroup,
       position: new THREE.Vector3(x, 0, z),
-      speed: 30 + Math.random() * 20,
-      health: 100,
-      maxHealth: 100,
+      speed: this.baseSpeed + Math.random() * 20 * (this.levelConfig?.enemySpeed || 1),
+      health: this.baseHealth,
+      maxHealth: this.baseHealth,
       alertRange: 80,
       attackRange: 15,
       state: 'idle',
@@ -243,7 +269,7 @@ export class Enemy {
     
     // 造成伤害
     if (this.onPlayerDamage) {
-      this.onPlayerDamage(this.ENEMY_DAMAGE);
+      this.onPlayerDamage(this.baseDamage);
     }
     
     // 攻击动画 - 手臂挥动

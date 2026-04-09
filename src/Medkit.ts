@@ -42,6 +42,13 @@ export class Medkit {
       this.scene.add(medkit.mesh);
     }
   }
+  
+  public clearMedkits(): void {
+    for (const medkit of this.medkits) {
+      this.scene.remove(medkit.mesh);
+    }
+    this.medkits = [];
+  }
 
   private createMedkit(x: number, z: number): MedkitData {
     const group = new THREE.Group();

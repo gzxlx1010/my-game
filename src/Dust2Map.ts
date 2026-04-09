@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import type { LevelConfig } from './LevelSystem';
 
 export class Dust2Map {
   private scene: THREE.Scene;
@@ -6,94 +7,214 @@ export class Dust2Map {
   public sky: THREE.Mesh | null = null;
   
   private wallMaterial!: THREE.MeshStandardMaterial;
-  private sandMaterial!: THREE.MeshStandardMaterial;
+  private groundMaterial!: THREE.MeshStandardMaterial;
+  private roadMaterial!: THREE.MeshStandardMaterial;
+  private skyMat!: THREE.ShaderMaterial;
+  
+  private currentConfig: LevelConfig | null = null;
+  private obstacles: THREE.Object3D[] = [];
+  
+  // 障碍物位置（根据关卡配置决定是否创建）
+  private boxPositions = [
+    { x: -200, z: -300 },
+    { x: -360, z: -160 },
+    { x: -400, z: 0 },
+    { x: 300, z: 200 },
+    { x: 400, z: -100 },
+    { x: 0, z: -100 },
+    { x: -100, z: 100 },
+    { x: 100, z: 100 },
+    { x: -500, z: -300 },
+    { x: 500, z: 300 },
+    { x: -300, z: 200 },
+    { x: 300, z: -200 },
+  ];
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
     this.createMaterials();
-    this.createEnvironment();
-    this.createGround();
-    this.createMainArea();
-    this.createTunnels();
-    this.createBombsites();
-    this.createPlatforms();
-    this.createRamps();
-    this.createBoxes();
-    this.addLighting();
     this.addSkybox();
+    this.addLighting();
   }
-
+  
+  public setLevelConfig(config: LevelConfig): void {
+    this.currentConfig = config;
+    
+    // 更新地面颜色
+    this.groundMaterial.color.setHex(config.groundColor);
+    
+    // 更新墙壁颜色（基于地面颜色的深色版本）
+    const wallColor = this.darkenColor(config.groundColor, 0.7);
+    this.wallMaterial.color.setHex(wallColor);
+    
+    // 更新道路颜色
+    this.roadMaterial.color.setHex(this.darkenColor(config.groundColor, 0.85));
+    
+    // 更新天空颜色
+    if (this.skyMat) {
+      this.skyMat.uniforms.topColor.value.setHex(config.skyColor);
+      this.skyMat.uniforms.bottomColor.value.setHex(this.darkenColor(config.skyColor, 0.6));
+    }
+    
+    // 更新雾颜色
+    this.scene.fog = new THREE.Fog(config.fogColor, 100, config.mapSize * 1.5);
+    
+    // 更新半球光
+    this.scene.children = this.scene.children.filter(child => {
+      if (child instanceof THREE.HemisphereLight) {
+        child.color.setHex(config.skyColor);
+        child.groundColor.setHex(config.groundColor);
+        return true;
+      }
+      return true;
+    });
+    
+    // 更新障碍物
+    this.updateObstacles(config.hasObstacles);
+    
+    // 更新地面大小
+    this.updateGroundSize(config.mapSize);
+    
+    console.log(`[Dust2Map] Level ${config.level} configured: ${config.name}`);
+  }
+  
+  private darkenColor(color: number, factor: number): number {
+    const r = ((color >> 16) & 255) * factor;
+    const g = ((color >> 8) & 255) * factor;
+    const b = (color & 255) * factor;
+    return Math.floor(r) << 16 | Math.floor(g) << 8 | Math.floor(b);
+  }
+  
   private createMaterials(): void {
+    // 墙壁材质（默认沙漠色）
     this.wallMaterial = new THREE.MeshStandardMaterial({
-      color: 0xc9b896,
+      color: 0x8b7355,
       roughness: 0.8,
       metalness: 0.0
     });
 
-    this.sandMaterial = new THREE.MeshStandardMaterial({
-      color: 0xd4a574,
+    // 地面材质
+    this.groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0xc2a366,
       roughness: 1.0,
       metalness: 0.0
     });
+    
+    // 道路材质
+    this.roadMaterial = new THREE.MeshStandardMaterial({
+      color: 0xa89060,
+      roughness: 0.9,
+      metalness: 0.0
+    });
   }
-
-  private createEnvironment(): void {
-    // Fog is now set in main.ts
-  }
-
-  private createGround(): void {
-    // Main ground
-    const groundGeometry = new THREE.PlaneGeometry(1600, 1600);
-    const ground = new THREE.Mesh(groundGeometry, this.sandMaterial);
+  
+  private updateGroundSize(size: number): void {
+    // 移除旧的地面
+    this.scene.children = this.scene.children.filter(child => {
+      if (child instanceof THREE.Mesh) {
+        if (child.geometry instanceof THREE.PlaneGeometry && child.geometry.parameters) {
+          const params = child.geometry.parameters;
+          if (params.width > 500) return false; // 移除旧地面
+        }
+      }
+      return true;
+    });
+    
+    // 创建新地面
+    const groundGeometry = new THREE.PlaneGeometry(size * 2, size * 2);
+    const ground = new THREE.Mesh(groundGeometry, this.groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = 0;
     ground.receiveShadow = true;
     this.scene.add(ground);
-
-    // Road/path in the middle
-    const roadGeometry = new THREE.PlaneGeometry(80, 800);
-    const road = new THREE.Mesh(roadGeometry, this.wallMaterial);
+    
+    // 道路
+    const roadSize = Math.min(size * 0.4, 150);
+    const roadGeometry = new THREE.PlaneGeometry(roadSize, size * 2);
+    const road = new THREE.Mesh(roadGeometry, this.roadMaterial);
     road.rotation.x = -Math.PI / 2;
     road.position.set(0, 0.1, 0);
     road.receiveShadow = true;
     this.scene.add(road);
   }
+  
+  private updateObstacles(hasObstacles: boolean): void {
+    // 移除旧障碍物
+    this.obstacles.forEach(obj => {
+      this.scene.remove(obj);
+    });
+    this.obstacles = [];
+    
+    // 从碰撞体中移除障碍物
+    this.colliders = this.colliders.filter(collider => {
+      return !this.obstacles.includes(collider);
+    });
+    
+    if (!hasObstacles) return;
+    
+    // 创建新障碍物
+    this.boxPositions.forEach(pos => {
+      this.createObstacleBox(pos.x, 0, pos.z);
+    });
+  }
+  
+  private createObstacleBox(x: number, y: number, z: number): void {
+    const size = 30 + Math.random() * 30;
+    const height = 20 + Math.random() * 60;
+    const boxGeo = new THREE.BoxGeometry(size, height, size);
+    const box = new THREE.Mesh(boxGeo, this.wallMaterial);
+    box.position.set(x + (Math.random() - 0.5) * 40, y + height/2, z + (Math.random() - 0.5) * 40);
+    box.rotation.y = Math.random() * Math.PI;
+    box.castShadow = true;
+    box.receiveShadow = true;
+    this.scene.add(box);
+    this.colliders.push(box);
+    this.obstacles.push(box);
+  }
 
-  private createMainArea(): void {
-    // Long wall A site (left side)
+  public createEnvironment(): void {
+    // 已废弃，现在由setLevelConfig统一处理
+  }
+
+  public createGround(): void {
+    // 已废弃，现在由setLevelConfig统一处理
+  }
+
+  public createMainArea(): void {
+    // 长墙 A点（左侧）
     this.createWall(-150, 0, -160, 400, 120, 20);
     
-    // Short wall A site
+    // 短墙 A点
     this.createWall(-360, 0, -60, 20, 80, 160);
     
-    // Site A platform
+    // A点平台
     this.createPlatform(-280, 0, -200, 240, 200);
     
-    // CT spawn area walls
+    // CT出生点墙壁
     this.createWall(200, 0, -300, 300, 100, 20);
     this.createWall(360, 0, -200, 20, 80, 200);
     
-    // B site walls
+    // B点墙壁
     this.createWall(-160, 0, 160, 20, 80, 240);
     this.createWall(160, 0, 160, 20, 80, 240);
     this.createWall(0, 0, 300, 360, 100, 20);
     
-    // B site platform
+    // B点平台
     this.createPlatform(0, 0, 220, 360, 160);
 
-    // Mid walls
+    // 中路墙壁
     this.createWall(-100, 0, 0, 20, 60, 120);
     this.createWall(100, 0, 0, 20, 60, 120);
   }
 
-  private createTunnels(): void {
-    // A tunnel (left)
+  public createTunnels(): void {
+    // A隧道（左侧）
     this.createTunnel(-500, 0, -100, 160, 80, 400);
     
-    // B tunnel (right) 
+    // B隧道（右侧） 
     this.createTunnel(500, 0, 100, 160, 80, 400);
 
-    // Tunnel support pillars
+    // 隧道支撑柱
     for (let i = 0; i < 8; i++) {
       this.createPillar(-440, 0, -200 + i * 60, 16, 80, 16);
       this.createPillar(440, 0, 200 - i * 60, 16, 80, 16);
@@ -101,7 +222,7 @@ export class Dust2Map {
   }
 
   private createTunnel(x: number, y: number, z: number, width: number, height: number, depth: number): void {
-    // Tunnel ceiling (visual only, no collision)
+    // 隧道顶部（仅视觉，无碰撞）
     const ceilingGeo = new THREE.BoxGeometry(width, 10, depth);
     const ceiling = new THREE.Mesh(ceilingGeo, this.wallMaterial);
     ceiling.position.set(x, y + height - 5, z);
@@ -109,7 +230,7 @@ export class Dust2Map {
     ceiling.receiveShadow = true;
     this.scene.add(ceiling);
 
-    // Tunnel walls - 碰撞体与视觉墙壁完全贴合
+    // 隧道墙壁 - 碰撞体与视觉墙壁完全贴合
     const wallThickness = 10;
     const wallHeight = height;
     
@@ -132,14 +253,14 @@ export class Dust2Map {
     this.colliders.push(wall2);
   }
 
-  private createBombsites(): void {
-    // A Site bombsite
+  public createBombsites(): void {
+    // A点炸弹位置标记
     this.createSiteMarker(-280, 0.2, -240, "A");
     
-    // B Site bombsite  
+    // B点炸弹位置标记
     this.createSiteMarker(0, 0.2, 220, "B");
 
-    // Bombsite bombs (visual only)
+    // 炸弹模型（仅视觉）
     this.createBomb(-280, 6, -230);
     this.createBomb(-290, 6, -250);
     this.createBomb(10, 6, 230);
@@ -183,8 +304,8 @@ export class Dust2Map {
     this.scene.add(bomb);
   }
 
-  private createPlatforms(): void {
-    // A site raised platform
+  public createPlatforms(): void {
+    // A点高台
     const aPlatGeo = new THREE.BoxGeometry(240, 40, 200);
     const aPlat = new THREE.Mesh(aPlatGeo, this.wallMaterial);
     aPlat.position.set(-280, 20, -200);
@@ -193,7 +314,7 @@ export class Dust2Map {
     this.scene.add(aPlat);
     this.colliders.push(aPlat);
 
-    // B site raised platform
+    // B点高台
     const bPlatGeo = new THREE.BoxGeometry(360, 30, 160);
     const bPlat = new THREE.Mesh(bPlatGeo, this.wallMaterial);
     bPlat.position.set(0, 15, 220);
@@ -203,11 +324,11 @@ export class Dust2Map {
     this.colliders.push(bPlat);
   }
 
-  private createRamps(): void {
-    // A site ramp
+  public createRamps(): void {
+    // A点坡道
     this.createRamp(-160, 0, -120, 80, 40, 60, 0);
     
-    // B site ramps
+    // B点坡道
     this.createRamp(-140, 0, 120, 60, 30, 80, 0);
     this.createRamp(140, 0, 120, 60, 30, 80, 0);
   }
@@ -235,35 +356,8 @@ export class Dust2Map {
     this.colliders.push(ramp);
   }
 
-  private createBoxes(): void {
-    // Random boxes for cover
-    const boxPositions = [
-      { x: -200, z: -300 },
-      { x: -360, z: -160 },
-      { x: -400, z: 0 },
-      { x: 300, z: 200 },
-      { x: 400, z: -100 },
-      { x: 0, z: -100 },
-      { x: -100, z: 100 },
-      { x: 100, z: 100 },
-    ];
-
-    boxPositions.forEach(pos => {
-      this.createRandomBox(pos.x, 0, pos.z);
-    });
-  }
-
-  private createRandomBox(x: number, y: number, z: number): void {
-    const size = 30 + Math.random() * 30;
-    const height = 20 + Math.random() * 60;
-    const boxGeo = new THREE.BoxGeometry(size, height, size);
-    const box = new THREE.Mesh(boxGeo, this.wallMaterial);
-    box.position.set(x + (Math.random() - 0.5) * 40, y + height/2, z + (Math.random() - 0.5) * 40);
-    box.rotation.y = Math.random() * Math.PI;
-    box.castShadow = true;
-    box.receiveShadow = true;
-    this.scene.add(box);
-    this.colliders.push(box);
+  public createBoxes(): void {
+    // 随机掩体（仅当hasObstacles为true时由updateObstacles创建）
   }
 
   private createWall(x: number, y: number, z: number, width: number, height: number, depth: number): void {
@@ -297,11 +391,11 @@ export class Dust2Map {
   }
 
   private addLighting(): void {
-    // Ambient light
+    // 环境光
     const ambient = new THREE.AmbientLight(0xffffff, 0.5);
     this.scene.add(ambient);
 
-    // Main sun light
+    // 主阳光
     const sunLight = new THREE.DirectionalLight(0xffeedd, 1.2);
     sunLight.position.set(200, 400, 200);
     sunLight.castShadow = true;
@@ -315,12 +409,12 @@ export class Dust2Map {
     sunLight.shadow.camera.bottom = -600;
     this.scene.add(sunLight);
 
-    // Fill light
+    // 补光
     const fillLight = new THREE.DirectionalLight(0xaaaacc, 0.4);
     fillLight.position.set(-200, 200, -200);
     this.scene.add(fillLight);
 
-    // Point lights for tunnels
+    // 隧道点光源
     const tunnelLight1 = new THREE.PointLight(0xffaa55, 0.8, 200);
     tunnelLight1.position.set(-500, 70, -200);
     this.scene.add(tunnelLight1);
@@ -329,15 +423,15 @@ export class Dust2Map {
     tunnelLight2.position.set(500, 70, 200);
     this.scene.add(tunnelLight2);
     
-    // Hemisphere light for sky color
-    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0xd4a574, 0.3);
+    // 半球光（天空和地面颜色）
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0xc2a366, 0.3);
     this.scene.add(hemiLight);
   }
 
   private addSkybox(): void {
-    // Create gradient skybox
+    // 创建渐变天空盒
     const skyGeo = new THREE.SphereGeometry(1000, 32, 32);
-    const skyMat = new THREE.ShaderMaterial({
+    this.skyMat = new THREE.ShaderMaterial({
       uniforms: {
         topColor: { value: new THREE.Color(0x87ceeb) },
         bottomColor: { value: new THREE.Color(0xd4a574) },
@@ -366,7 +460,7 @@ export class Dust2Map {
       side: THREE.BackSide,
       depthWrite: false
     });
-    this.sky = new THREE.Mesh(skyGeo, skyMat);
+    this.sky = new THREE.Mesh(skyGeo, this.skyMat);
     this.scene.add(this.sky);
   }
   
@@ -374,5 +468,9 @@ export class Dust2Map {
     if (this.sky) {
       this.sky.position.copy(cameraPosition);
     }
+  }
+  
+  public getWallMaterial(): THREE.MeshStandardMaterial {
+    return this.wallMaterial;
   }
 }

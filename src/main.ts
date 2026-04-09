@@ -9,6 +9,7 @@ import { ShootingSystem } from './ShootingSystem';
 import { Weapon } from './Weapon';
 import { Medkit } from './Medkit';
 import { DecalSystem } from './DecalSystem';
+import { LevelSystem, LEVEL_CONFIGS } from './LevelSystem';
 
 class Game {
   private scene: THREE.Scene;
@@ -47,6 +48,10 @@ class Game {
   
   // 贴花系统
   private decalSystem!: DecalSystem;
+  
+  // 关卡系统
+  private levelSystem!: LevelSystem;
+  private levelUI!: HTMLElement | null;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -168,6 +173,16 @@ class Game {
     this.healingContainer = document.getElementById('healing-bar-container');
     this.healingFill = document.getElementById('healing-fill');
     this.healingPercent = document.getElementById('healing-percent');
+    
+    // 初始化关卡系统
+    this.levelSystem = new LevelSystem(this.scene);
+    this.levelSystem.setLevelCompleteCallback(() => this.handleLevelComplete());
+    
+    // 获取关卡UI元素
+    this.levelUI = document.getElementById('level-info');
+    
+    // 启动第一关
+    this.startLevel(1);
     
     // 设置FPSController的医疗回调
     this.fpsController.onHealing = (health: number, maxHealth: number) => {
@@ -520,6 +535,129 @@ class Game {
       }
     }
   }
+  
+  // 启动指定关卡
+  private startLevel(level: number): void {
+    const config = LEVEL_CONFIGS[level - 1];
+    if (!config) {
+      console.error(`[Game] Invalid level: ${level}`);
+      return;
+    }
+    
+    console.log(`[Game] Starting Level ${level}: ${config.name}`);
+    
+    // 重置玩家状态（如果活着）
+    if (!this.isDead) {
+      const spawnPosition = new THREE.Vector3(0, 35, config.mapSize * 0.8);
+      this.fpsController.respawn(spawnPosition);
+    }
+    
+    // 配置关卡系统
+    this.levelSystem.startLevel(level);
+    
+    // 配置地图
+    this.dust2Map.setLevelConfig(config);
+    
+    // 配置敌人
+    this.enemy.setLevelConfig(config);
+    this.enemy.spawnEnemies(config.enemyCount);
+    
+    // 重新生成医疗包
+    this.medkit.clearMedkits();
+    this.medkit.spawnMedkits(Math.min(5, Math.floor(config.enemyCount / 3)));
+    
+    // 更新UI
+    this.updateLevelUI();
+    
+    // 显示关卡开始提示
+    this.showLevelStartMessage(level, config.name, config.description);
+  }
+  
+  // 显示关卡开始提示
+  private showLevelStartMessage(level: number, name: string, description: string): void {
+    const message = document.getElementById('level-message');
+    if (message) {
+      message.innerHTML = `
+        <div class="level-start">
+          <div class="level-number">第 ${level} 关</div>
+          <div class="level-name">${name}</div>
+          <div class="level-desc">${description}</div>
+        </div>
+      `;
+      message.style.opacity = '1';
+      
+      setTimeout(() => {
+        message.style.opacity = '0';
+      }, 3000);
+    }
+  }
+  
+  // 处理关卡完成
+  private handleLevelComplete(): void {
+    const currentLevel = this.levelSystem.getProgress().currentLevel;
+    
+    if (this.levelSystem.isGameComplete()) {
+      // 游戏通关
+      this.showGameCompleteMessage();
+    } else {
+      // 进入下一关
+      setTimeout(() => {
+        this.startLevel(currentLevel + 1);
+      }, 2000);
+    }
+  }
+  
+  // 显示游戏通关信息
+  private showGameCompleteMessage(): void {
+    const message = document.getElementById('level-message');
+    if (message) {
+      message.innerHTML = `
+        <div class="game-complete">
+          <div class="complete-title">恭喜通关！</div>
+          <div class="complete-subtitle">你已完成所有关卡</div>
+        </div>
+      `;
+      message.style.opacity = '1';
+      message.style.color = '#ffd700';
+    }
+  }
+  
+  // 更新关卡UI
+  private updateLevelUI(): void {
+    const progress = this.levelSystem.getProgress();
+    const config = this.levelSystem.getCurrentLevelConfig();
+    
+    if (this.levelUI) {
+      this.levelUI.innerHTML = `
+        <div class="level-name">${config.name}</div>
+        <div class="level-enemies">击杀: <span>${progress.totalKills} / ${progress.killTarget}</span></div>
+        <div id="level-progress-container">
+          <div id="level-progress-label">进度</div>
+          <div id="level-progress">
+            <div id="level-progress-fill"></div>
+          </div>
+        </div>
+        <div id="level-target">目标: 击杀 ${progress.killTarget} 名敌人</div>
+      `;
+    }
+    
+    // 更新进度条
+    const progressFill = document.getElementById('level-progress-fill');
+    if (progressFill) {
+      const percent = Math.min(100, (progress.totalKills / progress.killTarget) * 100);
+      progressFill.style.width = `${percent}%`;
+    }
+    
+    // 更新入口提示
+    const portalHint = document.getElementById('portal-hint');
+    if (portalHint) {
+      if (progress.isPortalActive) {
+        portalHint.classList.add('active');
+      } else {
+        portalHint.classList.remove('active');
+      }
+    }
+  }
 
   private onResize(): void {
     const width = window.innerWidth;
@@ -572,7 +710,10 @@ class Game {
           if (!hitSet.has(hit.enemy)) {
             hitSet.add(hit.enemy);
             const killed = this.enemy.takeDamage(hit.enemy, damage);
-            if (killed) killCount++;
+            if (killed) {
+              killCount++;
+              this.levelSystem.onEnemyKilled(); // 通知关卡系统
+            }
           }
         } else if (hit.wallHit) {
           wallHitCount++;
@@ -600,6 +741,7 @@ class Game {
         const killed = this.enemy.takeDamage(result.hits[0].enemy, damage);
         if (killed) {
           this.showHitMarker();
+          this.levelSystem.onEnemyKilled(); // 通知关卡系统
         }
       } else if (result.hits[0]?.wallHit) {
         // 命中墙壁，添加贴花
@@ -669,6 +811,17 @@ class Game {
     }
     
     this.enemy.update(delta, this.fpsController.getPosition());
+    
+    // 更新关卡系统
+    this.levelSystem.update(delta);
+    
+    // 检查进入入口
+    if (this.levelSystem.checkPortalEnter(this.fpsController.getPosition())) {
+      // 进入入口后的逻辑由handleLevelComplete处理
+    }
+    
+    // 更新关卡UI
+    this.updateLevelUI();
     
     // 更新敌人玩家引用
     this.enemy.setPlayerRef(this.fpsController.getPosition());
