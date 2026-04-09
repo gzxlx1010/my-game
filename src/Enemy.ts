@@ -146,7 +146,7 @@ export class Enemy {
     return {
       mesh,
       visualGroup: enemyGroup,
-      position: new THREE.Vector3(x, 17.5, z),
+      position: new THREE.Vector3(x, 5, z), // y=5让脚底在地平面上
       speed: 30 + Math.random() * 20,
       health: 100,
       maxHealth: 100,

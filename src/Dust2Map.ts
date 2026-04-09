@@ -101,15 +101,6 @@ export class Dust2Map {
   }
 
   private createTunnel(x: number, y: number, z: number, width: number, height: number, depth: number): void {
-    // Tunnel floor (visual only, no collision - use ground plane)
-    const floorGeo = new THREE.BoxGeometry(width, 10, depth);
-    const floor = new THREE.Mesh(floorGeo, this.wallMaterial);
-    floor.position.set(x, y + 5, z);
-    floor.castShadow = true;
-    floor.receiveShadow = true;
-    this.scene.add(floor);
-    // 不添加地板到碰撞器
-
     // Tunnel ceiling (visual only, no collision)
     const ceilingGeo = new THREE.BoxGeometry(width, 10, depth);
     const ceiling = new THREE.Mesh(ceilingGeo, this.wallMaterial);
@@ -119,11 +110,10 @@ export class Dust2Map {
     this.scene.add(ceiling);
 
     // Tunnel walls - 碰撞体与视觉墙壁完全贴合
-    // 墙壁位于隧道两侧边缘
     const wallThickness = 10;
     const wallHeight = height;
     
-    // 左侧墙壁 - 紧贴隧道边缘
+    // 左侧墙壁
     const wallGeo1 = new THREE.BoxGeometry(wallThickness, wallHeight, depth);
     const wall1 = new THREE.Mesh(wallGeo1, this.wallMaterial);
     wall1.position.set(x - width/2 + wallThickness/2, y + wallHeight/2, z);
@@ -132,7 +122,7 @@ export class Dust2Map {
     this.scene.add(wall1);
     this.colliders.push(wall1);
 
-    // 右侧墙壁 - 紧贴隧道边缘
+    // 右侧墙壁
     const wallGeo2 = new THREE.BoxGeometry(wallThickness, wallHeight, depth);
     const wall2 = new THREE.Mesh(wallGeo2, this.wallMaterial);
     wall2.position.set(x + width/2 - wallThickness/2, y + wallHeight/2, z);

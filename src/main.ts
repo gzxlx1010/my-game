@@ -80,7 +80,7 @@ class Game {
 
     this.dust2Map = new Dust2Map(this.scene);
     
-    const startPosition = new THREE.Vector3(0, 40, 400);
+    const startPosition = new THREE.Vector3(0, 35, 400); // y=35是眼睛高度，脚底在y=0
     this.fpsController = new FPSController(this.camera, startPosition);
     
     this.scene.add(this.camera);
@@ -423,7 +423,7 @@ class Game {
     }
     
     // 复活玩家
-    const spawnPosition = new THREE.Vector3(0, 40, 400);
+    const spawnPosition = new THREE.Vector3(0, 35, 400); // y=35是眼睛高度，脚底在y=0
     this.fpsController.respawn(spawnPosition);
     
     // 更新敌人玩家引用
