@@ -116,7 +116,7 @@ class Game {
     
     this.enemy = new Enemy(this.scene);
     this.enemy.setColliders(this.dust2Map.colliders);
-    this.enemy.spawnEnemies(8); // 增加到8个敌人
+    this.enemy.spawnEnemies(15); // 增加到15个敌人
     // enemy.setAudioContext将在有AudioContext时设置
     
     // 初始化医疗包

@@ -27,14 +27,23 @@ export class Enemy {
   
   private readonly SPAWN_POINTS = [
     { x: -280, z: -240 },  // A site
+    { x: -250, z: -200 },  // A site 2
     { x: 0, z: 220 },       // B site
+    { x: 50, z: 180 },      // B site 2
     { x: -500, z: -100 },  // A tunnel
+    { x: -450, z: -50 },   // A tunnel 2
     { x: 500, z: 100 },     // B tunnel
+    { x: 450, z: 150 },    // B tunnel 2
     { x: 200, z: -300 },   // CT spawn
+    { x: 150, z: -350 },   // CT spawn 2
     { x: 0, z: 100 },      // Mid
+    { x: 0, z: 50 },       // Mid 2
+    { x: -200, z: 400 },   // Long A
+    { x: 300, z: 350 },    // T spawn
+    { x: -100, z: 300 },   // Lower tunnels
   ];
   
-  private readonly MAX_ENEMIES = 8;
+  private readonly MAX_ENEMIES = 15;
   private readonly DEATH_DURATION = 2.0;
   private readonly RESPAWN_DELAY = 5.0;
   private readonly ENEMY_RADIUS = 8;
