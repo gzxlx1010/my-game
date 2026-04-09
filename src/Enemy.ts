@@ -26,21 +26,31 @@ export class Enemy {
   private audioCtx: AudioContext | null = null;
   
   private readonly SPAWN_POINTS = [
-    { x: -280, z: -240 },  // A site
-    { x: -250, z: -200 },  // A site 2
-    { x: 0, z: 220 },       // B site
-    { x: 50, z: 180 },      // B site 2
-    { x: -500, z: -100 },  // A tunnel
-    { x: -450, z: -50 },   // A tunnel 2
-    { x: 500, z: 100 },     // B tunnel
-    { x: 450, z: 150 },    // B tunnel 2
-    { x: 200, z: -300 },   // CT spawn
-    { x: 150, z: -350 },   // CT spawn 2
-    { x: 0, z: 100 },      // Mid
-    { x: 0, z: 50 },       // Mid 2
-    { x: -200, z: 400 },   // Long A
-    { x: 300, z: 350 },    // T spawn
-    { x: -100, z: 300 },   // Lower tunnels
+    // A site区域 - 远离箱子的开放区域
+    { x: -420, z: -280 },  // A site左侧开放区
+    { x: -180, z: -350 },  // A site边缘
+    // B site区域 - 远离箱子的开放区域
+    { x: 150, z: 320 },    // B site右侧开放区
+    { x: -80, z: 380 },    // B site后方
+    // A隧道区域 - 隧道外开放区
+    { x: -620, z: -250 },  // A tunnel入口外
+    { x: -650, z: 50 },    // A tunnel侧方
+    // B隧道区域 - 隧道外开放区
+    { x: 680, z: 50 },     // B tunnel入口外
+    { x: 620, z: 280 },    // B tunnel侧方
+    // CT spawn区域
+    { x: 180, z: -450 },    // CT spawn
+    { x: 320, z: -520 },   // CT spawn后方
+    // Mid区域 - 远离箱子的开放区域
+    { x: -180, z: -30 },   // Mid左侧
+    { x: 200, z: 80 },     // Mid右侧
+    // Long A区域
+    { x: -500, z: 480 },   // Long A
+    // T spawn区域
+    { x: 480, z: 480 },    // T spawn
+    // 其他开放区域
+    { x: -550, z: -400 },  // 左下角
+    { x: 550, z: -350 },   // 右下角
   ];
   
   private readonly MAX_ENEMIES = 15;
