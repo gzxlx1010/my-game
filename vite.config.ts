@@ -3,11 +3,9 @@ import { resolve } from 'path'
 
 export default defineConfig({
   root: '.',
-  base: '/my-game/dist/',
+  base: '/my-game/',
   build: {
     outDir: 'dist',
-    rollupOptions: {
-      input: resolve(__dirname, 'index.html')
-    }
+    emptyOutDir: true
   }
 })
