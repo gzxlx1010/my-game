@@ -205,8 +205,12 @@ export class Enemy {
     const now = performance.now() / 1000;
     if (now - enemy.lastAttackTime < enemy.attackCooldown) return;
     
-    const dist = enemy.position.distanceTo(playerPosition);
-    if (dist > enemy.attackRange) return;
+    // 使用水平距离（忽略高度差）
+    const dx = playerPosition.x - enemy.position.x;
+    const dz = playerPosition.z - enemy.position.z;
+    const horizontalDist = Math.sqrt(dx * dx + dz * dz);
+    
+    if (horizontalDist > enemy.attackRange) return;
     
     enemy.lastAttackTime = now;
     enemy.state = 'attack';
@@ -377,7 +381,10 @@ export class Enemy {
         continue;
       }
       
-      const distanceToPlayer = enemy.position.distanceTo(playerPosition);
+      // 使用水平距离计算（忽略高度差）
+      const dx = playerPosition.x - enemy.position.x;
+      const dz = playerPosition.z - enemy.position.z;
+      const distanceToPlayer = Math.sqrt(dx * dx + dz * dz);
       
       // State machine
       if (distanceToPlayer < enemy.attackRange) {
