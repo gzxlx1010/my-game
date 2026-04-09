@@ -7,6 +7,7 @@ import { Knife } from './Knife';
 import { Enemy } from './Enemy';
 import { ShootingSystem } from './ShootingSystem';
 import { Weapon } from './Weapon';
+import { Medkit } from './Medkit';
 
 class Game {
   private scene: THREE.Scene;
@@ -34,6 +35,14 @@ class Game {
   private healthStatus!: HTMLElement | null;
   private deathScreen!: HTMLElement | null;
   private isDead = false;
+  
+  // 医疗系统
+  private medkit!: Medkit;
+  private medkitPrompt!: HTMLElement | null;
+  private healingContainer!: HTMLElement | null;
+  private healingFill!: HTMLElement | null;
+  private healingPercent!: HTMLElement | null;
+  private nearbyMedkit: any = null;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -104,6 +113,12 @@ class Game {
     this.enemy = new Enemy(this.scene);
     this.enemy.setColliders(this.dust2Map.colliders);
     this.enemy.spawnEnemies(6);
+    // enemy.setAudioContext将在有AudioContext时设置
+    
+    // 初始化医疗包
+    this.medkit = new Medkit(this.scene);
+    this.medkit.setColliders(this.dust2Map.colliders);
+    this.medkit.spawnMedkits(3);
     
     this.movementIndicator = document.getElementById('movement-indicator');
     this.sprintIndicator = document.getElementById('sprint-indicator');
@@ -140,8 +155,164 @@ class Game {
         this.respawnPlayer();
       });
     }
+    
+    // 获取医疗UI元素
+    this.medkitPrompt = document.getElementById('medkit-prompt');
+    this.healingContainer = document.getElementById('healing-bar-container');
+    this.healingFill = document.getElementById('healing-fill');
+    this.healingPercent = document.getElementById('healing-percent');
+    
+    // 设置FPSController的医疗回调
+    this.fpsController.onHealing = (health: number, maxHealth: number) => {
+      this.updateHealthUI(health, maxHealth);
+      this.showHealCompleteEffect();
+      this.hideHealingUI();
+    };
+    
+    // 设置键盘事件（医疗包交互）
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyE' && !this.isDead) {
+        this.handleMedkitInteraction();
+      }
+    });
 
     window.addEventListener('resize', () => this.onResize());
+  }
+  
+  // 处理医疗包交互
+  private handleMedkitInteraction(): void {
+    // 如果正在医疗，取消
+    if (this.fpsController.isCurrentlyHealing()) {
+      this.fpsController.cancelHealing();
+      this.hideHealingUI();
+      return;
+    }
+    
+    // 如果有附近的医疗包，开始医疗
+    if (this.nearbyMedkit) {
+      const started = this.fpsController.startHealing(this.nearbyMedkit.position);
+      if (started) {
+        this.showHealingUI();
+        this.playHealingSound();
+      }
+    }
+  }
+  
+  // 显示医疗包提示
+  private showMedkitPrompt(): void {
+    if (this.medkitPrompt && this.fpsController.getHealth() < this.fpsController.getMaxHealth()) {
+      this.medkitPrompt.classList.add('visible');
+    }
+  }
+  
+  // 隐藏医疗包提示
+  private hideMedkitPrompt(): void {
+    if (this.medkitPrompt) {
+      this.medkitPrompt.classList.remove('visible');
+    }
+  }
+  
+  // 显示医疗进度条
+  private showHealingUI(): void {
+    if (this.healingContainer) {
+      this.healingContainer.classList.add('active');
+    }
+    this.hideMedkitPrompt();
+  }
+  
+  // 隐藏医疗进度条
+  private hideHealingUI(): void {
+    if (this.healingContainer) {
+      this.healingContainer.classList.remove('active');
+    }
+    if (this.healingFill) {
+      this.healingFill.style.width = '0%';
+    }
+  }
+  
+  // 更新医疗进度
+  private updateHealingUI(): void {
+    if (!this.fpsController.isCurrentlyHealing()) {
+      this.hideHealingUI();
+      return;
+    }
+    
+    const progress = this.fpsController.getHealingProgress();
+    
+    if (this.healingFill) {
+      this.healingFill.style.width = `${progress * 100}%`;
+    }
+    if (this.healingPercent) {
+      this.healingPercent.textContent = `${Math.floor(progress * 100)}%`;
+    }
+  }
+  
+  // 显示医疗完成特效
+  private showHealCompleteEffect(): void {
+    const effect = document.createElement('div');
+    effect.className = 'heal-complete-effect';
+    document.body.appendChild(effect);
+    setTimeout(() => effect.remove(), 500);
+    this.playHealCompleteSound();
+  }
+  
+  // 播放医疗音效
+  private playHealingSound(): void {
+    if (!this.audioCtx) return;
+    const ctx = this.audioCtx;
+    
+    // 医疗开始音效 - 类似注射器的声音
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(1200, ctx.currentTime + 0.2);
+    osc.frequency.linearRampToValueAtTime(600, ctx.currentTime + 0.5);
+    
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.2);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.5);
+    
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start();
+    osc.stop(ctx.currentTime + 0.5);
+  }
+  
+  // 播放医疗完成音效
+  private playHealCompleteSound(): void {
+    if (!this.audioCtx) return;
+    const ctx = this.audioCtx;
+    
+    // 医疗完成音效 - 清脆的提示音
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(523, ctx.currentTime); // C5
+    osc1.frequency.setValueAtTime(659, ctx.currentTime + 0.1); // E5
+    osc1.frequency.setValueAtTime(784, ctx.currentTime + 0.2); // G5
+    
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(523, ctx.currentTime + 0.3);
+    osc2.frequency.setValueAtTime(659, ctx.currentTime + 0.4);
+    osc2.frequency.setValueAtTime(784, ctx.currentTime + 0.5);
+    
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.5);
+    gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.6);
+    
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc1.start();
+    osc1.stop(ctx.currentTime + 0.3);
+    osc2.start();
+    osc2.stop(ctx.currentTime + 0.6);
   }
   
   // 更新血条UI
@@ -257,6 +428,10 @@ class Game {
     // 更新血量UI
     this.updateHealthUI(100, 100);
     
+    // 隐藏医疗UI
+    this.hideHealingUI();
+    this.hideMedkitPrompt();
+    
     // 重新锁定鼠标
     this.renderer.domElement.requestPointerLock();
   }
@@ -351,6 +526,12 @@ class Game {
   public start(): void {
     this.isRunning = true;
     this.updateWeaponUI();
+    
+    // 设置enemy的AudioContext
+    if (this.audioCtx) {
+      this.enemy.setAudioContext(this.audioCtx);
+    }
+    
     this.animate();
   }
 
@@ -439,6 +620,23 @@ class Game {
     
     // 更新敌人玩家引用
     this.enemy.setPlayerRef(this.fpsController.getPosition());
+    
+    // 更新医疗包
+    this.medkit.update(delta);
+    
+    // 检查医疗状态
+    this.fpsController.updateHealing(delta);
+    this.updateHealingUI();
+    
+    // 检查附近医疗包
+    const nearby = this.medkit.checkNearbyMedkit(this.fpsController.getPosition());
+    this.nearbyMedkit = nearby;
+    
+    if (nearby && !this.fpsController.isCurrentlyHealing()) {
+      this.showMedkitPrompt();
+    } else if (!this.fpsController.isCurrentlyHealing()) {
+      this.hideMedkitPrompt();
+    }
     
     if (this.movementIndicator) {
       if (isMoving) {

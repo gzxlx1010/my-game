@@ -73,6 +73,17 @@ export class FPSController {
   // Event callbacks
   public onDamageTaken: ((health: number, maxHealth: number) => void) | null = null;
   public onDeath: (() => void) | null = null;
+  public onHealing: ((health: number, maxHealth: number) => void) | null = null;
+  public onMedkitNearby: ((nearby: boolean) => void) | null = null;
+  
+  // Healing system
+  private isHealing = false;
+  private healingProgress = 0;
+  private healingTarget: THREE.Vector3 | null = null;
+  private readonly HEALING_DURATION = 3.0; // 3秒读条
+  private readonly HEAL_AMOUNT = 30; // 恢复30%血量
+  private lastHealingCheck = 0;
+  private readonly HEALING_CHECK_INTERVAL = 0.1; // 每0.1秒检查一次
   
   // Footstep sound
   private lastFootstep = 0;
@@ -441,9 +452,121 @@ export class FPSController {
     return this.isDead;
   }
   
-  // 受到伤害
+  // 复活
+  public respawn(position: THREE.Vector3): void {
+    this.health = this.maxHealth;
+    this.isDead = false;
+    this.position.copy(position);
+    this.velocity.set(0, 0, 0);
+    this.velocityY = 0;
+    this.invulnerableTime = 0;
+    this.cancelHealing(); // 取消医疗状态
+    
+    if (this.onDamageTaken) {
+      this.onDamageTaken(this.health, this.maxHealth);
+    }
+  }
+  
+  // 开始医疗
+  public startHealing(targetPos: THREE.Vector3): boolean {
+    if (this.isDead) return false;
+    if (this.isHealing) return false;
+    if (this.health >= this.maxHealth) return false; // 满血不能医疗
+    
+    this.isHealing = true;
+    this.healingProgress = 0;
+    this.healingTarget = targetPos.clone();
+    return true;
+  }
+  
+  // 取消医疗
+  public cancelHealing(): void {
+    if (this.isHealing) {
+      this.isHealing = false;
+      this.healingProgress = 0;
+      this.healingTarget = null;
+    }
+  }
+  
+  // 是否正在医疗
+  public isCurrentlyHealing(): boolean {
+    return this.isHealing;
+  }
+  
+  // 获取医疗进度 (0-1)
+  public getHealingProgress(): number {
+    return this.healingProgress;
+  }
+  
+  // 检查是否应该打断医疗
+  public checkHealingInterrupt(): void {
+    if (!this.isHealing) return;
+    
+    // 移动时打断
+    if (this.moveForward || this.moveBackward || this.moveLeft || this.moveRight) {
+      this.cancelHealing();
+      return;
+    }
+    
+    // 受到伤害时打断
+    const currentTime = performance.now() / 1000;
+    if (this.invulnerableTime > currentTime - this.INVULNERABLE_DURATION && this.invulnerableTime <= currentTime) {
+      // 刚受到伤害，在无敌时间刚结束时检查
+      if (currentTime - (this.invulnerableTime - this.INVULNERABLE_DURATION) < 0.5) {
+        this.cancelHealing();
+      }
+    }
+  }
+  
+  // 更新医疗逻辑
+  public updateHealing(delta: number): void {
+    if (!this.isHealing) return;
+    
+    // 检查是否打断
+    if (this.moveForward || this.moveBackward || this.moveLeft || this.moveRight) {
+      this.cancelHealing();
+      return;
+    }
+    
+    // 检查与目标距离
+    if (this.healingTarget) {
+      const dist = this.position.distanceTo(this.healingTarget);
+      if (dist > 30) { // 超出交互范围
+        this.cancelHealing();
+        return;
+      }
+    }
+    
+    // 增加进度
+    this.healingProgress += delta / this.HEALING_DURATION;
+    
+    // 完成医疗
+    if (this.healingProgress >= 1) {
+      this.completeHealing();
+    }
+  }
+  
+  // 完成医疗
+  private completeHealing(): void {
+    const healAmount = Math.min(this.HEAL_AMOUNT, this.maxHealth - this.health);
+    this.health = Math.min(this.maxHealth, this.health + this.HEAL_AMOUNT);
+    
+    this.isHealing = false;
+    this.healingProgress = 0;
+    this.healingTarget = null;
+    
+    // 触发医疗回调
+    if (this.onHealing) {
+      this.onHealing(this.health, this.maxHealth);
+    }
+  }
+  
+  // 受到伤害（打断医疗）
   public takeDamage(amount: number): void {
     if (this.isDead) return;
+    
+    // 打断医疗
+    this.cancelHealing();
     
     // 无敌时间检查
     const currentTime = performance.now() / 1000;
@@ -466,20 +589,6 @@ export class FPSController {
       if (this.onDeath) {
         this.onDeath();
       }
-    }
-  }
-  
-  // 复活
-  public respawn(position: THREE.Vector3): void {
-    this.health = this.maxHealth;
-    this.isDead = false;
-    this.position.copy(position);
-    this.velocity.set(0, 0, 0);
-    this.velocityY = 0;
-    this.invulnerableTime = 0;
-    
-    if (this.onDamageTaken) {
-      this.onDamageTaken(this.health, this.maxHealth);
     }
   }
 }

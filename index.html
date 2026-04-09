@@ -42,6 +42,31 @@
       <div class="health-status" id="health-status">FULL HEALTH</div>
     </div>
     
+    <!-- 医疗包提示 -->
+    <div id="medkit-prompt">
+      <div class="medkit-icon">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+          <rect x="3" y="8" width="18" height="8" fill="white"/>
+          <rect x="8" y="3" width="8" height="18" fill="white"/>
+          <rect x="3" y="10" width="18" height="4" fill="#ff3333"/>
+          <rect x="10" y="3" width="4" height="18" fill="#ff3333"/>
+        </svg>
+      </div>
+      <span class="medkit-hint">Press <strong>E</strong> to heal</span>
+    </div>
+    
+    <!-- 医疗进度条 -->
+    <div id="healing-bar-container">
+      <div class="healing-bar-wrapper">
+        <div class="healing-bar-label">HEALING</div>
+        <div class="healing-bar-bg">
+          <div class="healing-bar-fill" id="healing-fill"></div>
+        </div>
+        <div class="healing-bar-percent" id="healing-percent">0%</div>
+      </div>
+      <div class="healing-bar-hint">Stand still to continue healing</div>
+    </div>
+    
     <div id="crosshair">
       <div class="crosshair-line horizontal left"></div>
       <div class="crosshair-line horizontal right"></div>
