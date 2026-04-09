@@ -37,6 +37,8 @@ export abstract class Weapon {
   // 外部状态引用
   public mouseDownRef: { value: boolean } | null = null;
   public audioCtxRef: { value: AudioContext | null } | null = null;
+  public decalSystemRef: { addDecal: (pos: THREE.Vector3, normal: THREE.Vector3, type: string) => void } | null = null;
+  public weaponTypeRef: { value: string } | null = null; // 'bullet', 'shotgun', 'knife'
   
   public abstract config: WeaponConfig;
   
@@ -62,9 +64,22 @@ export abstract class Weapon {
   }
   
   // 设置外部状态引用
-  public setExternalState(mouseDownRef: { value: boolean }, audioCtxRef: { value: AudioContext | null }): void {
+  public setExternalState(
+    mouseDownRef: { value: boolean }, 
+    audioCtxRef: { value: AudioContext | null },
+    decalSystemRef?: { addDecal: (pos: THREE.Vector3, normal: THREE.Vector3, type: string) => void },
+    weaponType?: string
+  ): void {
     this.mouseDownRef = mouseDownRef;
     this.audioCtxRef = audioCtxRef;
+    if (decalSystemRef) this.decalSystemRef = decalSystemRef;
+    if (weaponType) {
+      if (!this.weaponTypeRef) {
+        this.weaponTypeRef = { value: weaponType };
+      } else {
+        this.weaponTypeRef.value = weaponType;
+      }
+    }
   }
   
   // 同步鼠标状态

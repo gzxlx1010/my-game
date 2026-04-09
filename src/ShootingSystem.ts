@@ -5,6 +5,8 @@ export interface HitResult {
   point: THREE.Vector3;
   enemy: THREE.Object3D | null;
   distance: number;
+  wallHit?: boolean;
+  wallNormal?: THREE.Vector3;
 }
 
 export interface MultiHitResult {
@@ -128,16 +130,31 @@ export class ShootingSystem {
           hit: true,
           point: hit.point,
           enemy: hit.object,
-          distance: hit.distance
+          distance: hit.distance,
+          wallHit: false
         };
       }
+    }
+    
+    // 检查是否命中墙壁
+    if (wallHits.length > 0) {
+      const wallHit = wallHits[0];
+      return {
+        hit: true,
+        point: wallHit.point.clone(),
+        enemy: null,
+        distance: wallHit.distance,
+        wallHit: true,
+        wallNormal: wallHit.face ? wallHit.face.normal.clone() : new THREE.Vector3(0, 1, 0)
+      };
     }
     
     return {
       hit: false,
       point: new THREE.Vector3(),
       enemy: null,
-      distance: Infinity
+      distance: Infinity,
+      wallHit: false
     };
   }
   

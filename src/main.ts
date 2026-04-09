@@ -8,6 +8,7 @@ import { Enemy } from './Enemy';
 import { ShootingSystem } from './ShootingSystem';
 import { Weapon } from './Weapon';
 import { Medkit } from './Medkit';
+import { DecalSystem } from './DecalSystem';
 
 class Game {
   private scene: THREE.Scene;
@@ -43,6 +44,9 @@ class Game {
   private healingFill!: HTMLElement | null;
   private healingPercent!: HTMLElement | null;
   private nearbyMedkit: any = null;
+  
+  // 贴花系统
+  private decalSystem!: DecalSystem;
 
   constructor() {
     this.scene = new THREE.Scene();
@@ -119,6 +123,9 @@ class Game {
     this.medkit = new Medkit(this.scene);
     this.medkit.setColliders(this.dust2Map.colliders);
     this.medkit.spawnMedkits(3);
+    
+    // 初始化贴花系统
+    this.decalSystem = new DecalSystem(this.scene);
     
     this.movementIndicator = document.getElementById('movement-indicator');
     this.sprintIndicator = document.getElementById('sprint-indicator');
@@ -545,6 +552,11 @@ class Game {
     const pellets = this.currentWeapon.getPellets();
     const damage = this.currentWeapon.getDamage();
     
+    // 确定武器类型
+    let weaponType: string = 'bullet';
+    if (this.currentWeaponSlot === 2) weaponType = 'shotgun';
+    else if (this.currentWeaponSlot === 3) weaponType = 'knife';
+    
     if (pellets > 1) {
       // 霰弹枪多发子弹
       const spread = 0.08; // 散射范围
@@ -553,6 +565,7 @@ class Game {
       // 对每个命中计算伤害
       const hitSet = new Set<THREE.Object3D>();
       let killCount = 0;
+      let wallHitCount = 0;
       
       for (const hit of result.hits) {
         if (hit.hit && hit.enemy) {
@@ -561,7 +574,14 @@ class Game {
             const killed = this.enemy.takeDamage(hit.enemy, damage);
             if (killed) killCount++;
           }
+        } else if (hit.wallHit) {
+          wallHitCount++;
         }
+      }
+      
+      // 散弹枪命中墙壁时添加多个贴花
+      if (wallHitCount > 0) {
+        this.addWallDecals(weaponType);
       }
       
       // 显示击杀标记
@@ -581,11 +601,43 @@ class Game {
         if (killed) {
           this.showHitMarker();
         }
+      } else if (result.hits[0]?.wallHit) {
+        // 命中墙壁，添加贴花
+        this.addSingleDecal(result.hits[0].point, result.hits[0].wallNormal!, weaponType);
       }
     }
     
     // 更新弹药UI
     this.updateWeaponUI();
+  }
+  
+  // 添加单发射击的贴花
+  private addSingleDecal(point: THREE.Vector3, normal: THREE.Vector3, type: string): void {
+    this.decalSystem.addDecal(point, normal, type as any);
+  }
+  
+  // 添加散弹枪命中的多个贴花
+  private addWallDecals(type: string): void {
+    const raycaster = new THREE.Raycaster();
+    const screenCenter = new THREE.Vector2(0, 0);
+    raycaster.setFromCamera(screenCenter, this.camera);
+    
+    const wallMeshes = this.dust2Map.colliders;
+    const hits = raycaster.intersectObjects(wallMeshes, true);
+    
+    if (hits.length > 0) {
+      // 添加多个贴花散布在命中点周围
+      for (let i = 0; i < 4; i++) {
+        const offset = new THREE.Vector3(
+          (Math.random() - 0.5) * 20,
+          (Math.random() - 0.5) * 20,
+          0
+        );
+        const pos = hits[0].point.clone().add(offset);
+        const normal = hits[0].face ? hits[0].face.normal.clone() : new THREE.Vector3(0, 1, 0);
+        this.decalSystem.addDecal(pos, normal, type as any);
+      }
+    }
   }
   
   private showHitMarker(): void {
@@ -623,6 +675,9 @@ class Game {
     
     // 更新医疗包
     this.medkit.update(delta);
+    
+    // 更新贴花系统
+    this.decalSystem.update(delta);
     
     // 检查医疗状态
     this.fpsController.updateHealing(delta);
