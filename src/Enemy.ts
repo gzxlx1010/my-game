@@ -76,68 +76,72 @@ export class Enemy {
   private createEnemy(x: number, z: number): EnemyData {
     const enemyGroup = new THREE.Group();
     
-    // Body (taller to match player height of 35)
-    const bodyGeo = new THREE.CylinderGeometry(4, 4, 26, 8);
-    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-    const body = new THREE.Mesh(bodyGeo, bodyMat);
-    body.position.y = 13;
-    body.name = 'body';
-    enemyGroup.add(body);
+    // 整个人物模型使用真实比例，总高度约35单位（与玩家一致）
     
-    // Head
-    const headGeo = new THREE.SphereGeometry(3, 8, 8);
-    const headMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-    const head = new THREE.Mesh(headGeo, headMat);
-    head.position.y = 29;
-    head.name = 'head';
-    enemyGroup.add(head);
+    // Legs - 腿部，从地面(y=0)开始
+    const legGeo = new THREE.CylinderGeometry(1.8, 1.5, 18, 8);
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x2a4a2a }); // 军绿色裤子
     
-    // Eyes
-    const eyeGeo = new THREE.SphereGeometry(0.5, 8, 8);
-    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-    leftEye.position.set(-1, 29, 2.5);
-    enemyGroup.add(leftEye);
-    
-    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-    rightEye.position.set(1, 29, 2.5);
-    enemyGroup.add(rightEye);
-    
-    // Legs
-    const legGeo = new THREE.CylinderGeometry(1.5, 1.5, 10, 6);
-    const legMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
     const leftLeg = new THREE.Mesh(legGeo, legMat);
-    leftLeg.position.set(-2, -5, 0);
+    leftLeg.position.set(-2.5, 9, 0); // y=9是腿的中心（腿高18，底部y=0，顶部y=18）
     leftLeg.name = 'leftLeg';
     enemyGroup.add(leftLeg);
     
     const rightLeg = new THREE.Mesh(legGeo, legMat);
-    rightLeg.position.set(2, -5, 0);
+    rightLeg.position.set(2.5, 9, 0);
     rightLeg.name = 'rightLeg';
     enemyGroup.add(rightLeg);
     
+    // Body - 躯干
+    const bodyGeo = new THREE.CylinderGeometry(4, 3.5, 14, 8);
+    const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a6a4a }); // 军绿色上衣
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.y = 25; // y=25是身体中心（底部y=18，顶部y=32）
+    body.name = 'body';
+    enemyGroup.add(body);
+    
+    // Head - 头部
+    const headGeo = new THREE.SphereGeometry(4, 12, 12);
+    const headMat = new THREE.MeshStandardMaterial({ color: 0x8b7355 }); // 皮肤色
+    const head = new THREE.Mesh(headGeo, headMat);
+    head.position.y = 36; // y=36是头的中心（头顶y=40，底部y=32）
+    head.name = 'head';
+    enemyGroup.add(head);
+    
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.6, 8, 8);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-1.5, 36, 3.5);
+    enemyGroup.add(leftEye);
+    
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(1.5, 36, 3.5);
+    enemyGroup.add(rightEye);
+    
     // Arms for attack animation
     const armGroup = new THREE.Group();
-    const armGeo = new THREE.CylinderGeometry(1, 1, 12, 6);
-    const armMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+    const armGeo = new THREE.CylinderGeometry(0.8, 0.7, 12, 6);
+    const armMat = new THREE.MeshStandardMaterial({ color: 0x8b7355 }); // 皮肤色
     
     const leftArm = new THREE.Mesh(armGeo, armMat);
-    leftArm.position.set(-5, 15, 0);
+    leftArm.position.set(-5.5, 24, 0);
     leftArm.rotation.z = Math.PI / 6;
     leftArm.name = 'leftArm';
     armGroup.add(leftArm);
     
     const rightArm = new THREE.Mesh(armGeo, armMat);
-    rightArm.position.set(5, 15, 0);
+    rightArm.position.set(5.5, 24, 0);
     rightArm.rotation.z = -Math.PI / 6;
     rightArm.name = 'rightArm';
     armGroup.add(rightArm);
     
     enemyGroup.add(armGroup);
     
-    enemyGroup.scale.set(0.5, 0.5, 0.5);
+    // 人物脚底在地平面y=0，头顶y=40，与玩家一致
+    // 无需额外偏移，leg底部已经在地平面上
     
-    // Hitbox mesh (height matches player height of 35)
+    // Hitbox mesh
     const mesh = new THREE.Mesh(
       new THREE.CylinderGeometry(this.ENEMY_RADIUS, this.ENEMY_RADIUS, 35, 16),
       new THREE.MeshStandardMaterial({ 
@@ -147,21 +151,16 @@ export class Enemy {
         visible: false
       })
     );
-    mesh.position.set(x, 17.5, z);
+    mesh.position.set(x, 17.5, z); // 碰撞体中心在地平面以上17.5单位
     mesh.castShadow = true;
     mesh.userData.isEnemy = true;
     mesh.userData.enemyGroup = enemyGroup;
     mesh.add(enemyGroup);
     
-    // 设置visualGroup位置 - 让脚底在地平面y=0
-    // body底部在relative y=0.5, head顶部在relative y=34, legs底部在relative y=-10
-    // 要让legs底部接触地面(y=0)，visualGroup需要向上偏移10
-    enemyGroup.position.set(0, 10, 0);
-    
     return {
       mesh,
       visualGroup: enemyGroup,
-      position: new THREE.Vector3(x, 17.5, z), // y=17.5是碰撞体中心
+      position: new THREE.Vector3(x, 17.5, z),
       speed: 30 + Math.random() * 20,
       health: 100,
       maxHealth: 100,
