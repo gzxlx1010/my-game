@@ -405,7 +405,7 @@ export class FPSController {
   }
 
   public getPosition(): THREE.Vector3 {
-    return this.position.clone();
+    return this.position;
   }
   
   public isMoving(): boolean {

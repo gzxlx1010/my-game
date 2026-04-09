@@ -201,13 +201,11 @@ export class Enemy {
     osc2.stop(ctx.currentTime + 0.1);
   }
 
-  private attackPlayer(enemy: EnemyData): void {
+  private attackPlayer(enemy: EnemyData, playerPosition: THREE.Vector3): void {
     const now = performance.now() / 1000;
     if (now - enemy.lastAttackTime < enemy.attackCooldown) return;
     
-    if (!this.playerRef) return;
-    
-    const dist = enemy.position.distanceTo(this.playerRef);
+    const dist = enemy.position.distanceTo(playerPosition);
     if (dist > enemy.attackRange) return;
     
     enemy.lastAttackTime = now;
@@ -386,8 +384,8 @@ export class Enemy {
         if (enemy.state !== 'attack') {
           enemy.state = 'attack';
         }
-        // 攻击玩家
-        this.attackPlayer(enemy);
+        // 攻击玩家 - 传递playerPosition
+        this.attackPlayer(enemy, playerPosition);
       } else if (distanceToPlayer < enemy.alertRange) {
         enemy.state = 'chase';
       } else if (enemy.state === 'chase') {
